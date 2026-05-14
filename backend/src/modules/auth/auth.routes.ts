@@ -1,11 +1,7 @@
 import { Router } from "express";
+import { login, register } from "./auth.controller";
 
 export const authRouter = Router();
 
-authRouter.post("/login", (_req, res) => {
-  res.status(501).json({ message: "Login endpoint pending implementation" });
-});
-
-authRouter.post("/register", (_req, res) => {
-  res.status(501).json({ message: "Register endpoint pending implementation" });
-});
+authRouter.post("/login", login);
+authRouter.post("/register", register);
