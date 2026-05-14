@@ -23,13 +23,20 @@ Construir una herramienta simple para que una empresa pueda:
 5. Dar seguimiento a acciones y tareas.
 6. Tener una vista clara del estado general de cumplimiento.
 
-## Stack sugerido
+## Stack definitivo
 
-- Frontend: React / Next.js
-- Backend: Node.js con Express o NestJS
+- Frontend: Next.js + React + TypeScript + Tailwind CSS
+- Backend: Node.js + Express + TypeScript
+- ORM: Prisma
 - Base de datos: PostgreSQL
 - Autenticación: JWT inicialmente
-- Almacenamiento de archivos: S3, Cloudinary o compatible
+- Almacenamiento de archivos: local en desarrollo; S3, Cloudflare R2 o compatible en producción
+
+## Arquitectura
+
+```txt
+Next.js frontend → Express API → Prisma → PostgreSQL
+```
 
 ## Estructura inicial
 
@@ -39,7 +46,8 @@ complienx/
 │   ├── product.md
 │   ├── mvp.md
 │   ├── roadmap.md
-│   └── database.md
+│   ├── database.md
+│   └── architecture.md
 ├── frontend/
 │   └── README.md
 ├── backend/
@@ -52,4 +60,4 @@ complienx/
 
 ## Estado actual
 
-Repositorio inicial del producto. La siguiente etapa es decidir el stack definitivo y comenzar la implementación del backend y frontend.
+Repositorio inicial del producto con stack definido. La siguiente etapa es crear los proyectos base de frontend y backend.
