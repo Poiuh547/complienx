@@ -1,0 +1,215 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  admin
+  collaborator
+  auditor
+}
+
+enum UserStatus {
+  active
+  inactive
+}
+
+enum DocumentStatus {
+  draft
+  in_review
+  approved
+  rejected
+  expired
+  archived
+}
+
+enum ApprovalStatus {
+  pending
+  approved
+  rejected
+}
+
+enum ActionType {
+  corrective
+  preventive
+  improvement
+}
+
+enum Priority {
+  low
+  medium
+  high
+  critical
+}
+
+enum ActionStatus {
+  open
+  in_progress
+  in_review
+  closed
+  cancelled
+}
+
+enum TaskStatus {
+  pending
+  completed
+  cancelled
+}
+
+model User {
+  id            BigInt          @id @default(autoincrement())
+  name          String          @db.VarChar(150)
+  email         String          @unique @db.VarChar(180)
+  passwordHash  String          @map("password_hash")
+  role          UserRole        @default(collaborator)
+  status        UserStatus      @default(active)
+  createdAt     DateTime        @default(now()) @map("created_at")
+  updatedAt     DateTime        @updatedAt @map("updated_at")
+
+  ownedDocuments Document[]       @relation("DocumentOwner")
+  uploadedVersions DocumentVersion[]
+  approvals       DocumentApproval[]
+  ownedActions    Action[]        @relation("ActionOwner")
+  actionComments  ActionComment[]
+  assignedTasks   Task[]          @relation("TaskAssignee")
+  activityLogs    ActivityLog[]
+
+  @@map("users")
+}
+
+model DocumentCategory {
+  id          BigInt     @id @default(autoincrement())
+  name        String     @db.VarChar(120)
+  description String?
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  documents   Document[]
+
+  @@map("document_categories")
+}
+
+model Document {
+  id               BigInt          @id @default(autoincrement())
+  title            String          @db.VarChar(200)
+  description      String?
+  categoryId       BigInt?         @map("category_id")
+  ownerId          BigInt?         @map("owner_id")
+  status           DocumentStatus  @default(draft)
+  currentVersionId BigInt?         @unique @map("current_version_id")
+  reviewDueDate    DateTime?       @map("review_due_date") @db.Date
+  createdAt        DateTime        @default(now()) @map("created_at")
+  updatedAt        DateTime        @updatedAt @map("updated_at")
+
+  category        DocumentCategory? @relation(fields: [categoryId], references: [id])
+  owner           User?             @relation("DocumentOwner", fields: [ownerId], references: [id])
+  versions        DocumentVersion[] @relation("DocumentVersions")
+  currentVersion  DocumentVersion?  @relation("CurrentDocumentVersion", fields: [currentVersionId], references: [id])
+  approvals       DocumentApproval[]
+
+  @@map("documents")
+}
+
+model DocumentVersion {
+  id            BigInt    @id @default(autoincrement())
+  documentId    BigInt    @map("document_id")
+  versionNumber String    @map("version_number") @db.VarChar(30)
+  fileUrl       String    @map("file_url")
+  fileName      String    @map("file_name") @db.VarChar(255)
+  fileType      String?   @map("file_type") @db.VarChar(120)
+  uploadedBy    BigInt?   @map("uploaded_by")
+  changeNotes   String?   @map("change_notes")
+  createdAt     DateTime  @default(now()) @map("created_at")
+
+  document          Document          @relation("DocumentVersions", fields: [documentId], references: [id], onDelete: Cascade)
+  uploader          User?             @relation(fields: [uploadedBy], references: [id])
+  currentForDocument Document?         @relation("CurrentDocumentVersion")
+  approvals         DocumentApproval[]
+
+  @@map("document_versions")
+}
+
+model DocumentApproval {
+  id                BigInt          @id @default(autoincrement())
+  documentId        BigInt          @map("document_id")
+  documentVersionId BigInt          @map("document_version_id")
+  approverId        BigInt          @map("approver_id")
+  status            ApprovalStatus  @default(pending)
+  comment           String?
+  decidedAt         DateTime?       @map("decided_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+
+  document        Document        @relation(fields: [documentId], references: [id], onDelete: Cascade)
+  documentVersion DocumentVersion @relation(fields: [documentVersionId], references: [id], onDelete: Cascade)
+  approver        User            @relation(fields: [approverId], references: [id])
+
+  @@map("document_approvals")
+}
+
+model Action {
+  id          BigInt       @id @default(autoincrement())
+  title       String       @db.VarChar(200)
+  description String?
+  type        ActionType
+  priority    Priority     @default(medium)
+  status      ActionStatus @default(open)
+  ownerId     BigInt?      @map("owner_id")
+  dueDate     DateTime?    @map("due_date") @db.Date
+  closedAt    DateTime?    @map("closed_at")
+  createdAt   DateTime     @default(now()) @map("created_at")
+  updatedAt   DateTime     @updatedAt @map("updated_at")
+
+  owner       User?           @relation("ActionOwner", fields: [ownerId], references: [id])
+  comments    ActionComment[]
+
+  @@map("actions")
+}
+
+model ActionComment {
+  id        BigInt   @id @default(autoincrement())
+  actionId  BigInt   @map("action_id")
+  userId    BigInt   @map("user_id")
+  comment   String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  action Action @relation(fields: [actionId], references: [id], onDelete: Cascade)
+  user   User   @relation(fields: [userId], references: [id])
+
+  @@map("action_comments")
+}
+
+model Task {
+  id                BigInt     @id @default(autoincrement())
+  title             String     @db.VarChar(200)
+  description       String?
+  type              String     @db.VarChar(60)
+  status            TaskStatus @default(pending)
+  assignedTo        BigInt?    @map("assigned_to")
+  relatedEntityType String?    @map("related_entity_type") @db.VarChar(60)
+  relatedEntityId   BigInt?    @map("related_entity_id")
+  dueDate           DateTime?  @map("due_date") @db.Date
+  createdAt         DateTime   @default(now()) @map("created_at")
+  updatedAt         DateTime   @updatedAt @map("updated_at")
+
+  assignee User? @relation("TaskAssignee", fields: [assignedTo], references: [id])
+
+  @@map("tasks")
+}
+
+model ActivityLog {
+  id          BigInt   @id @default(autoincrement())
+  userId      BigInt?  @map("user_id")
+  eventType   String   @map("event_type") @db.VarChar(80)
+  entityType  String?  @map("entity_type") @db.VarChar(80)
+  entityId    BigInt?  @map("entity_id")
+  description String?
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@map("activity_log")
+}
