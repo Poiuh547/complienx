@@ -3,14 +3,18 @@ import { HttpError } from "../../utils/http-error";
 import {
   createCategorySchema,
   createDocumentSchema,
+  createDocumentVersionSchema,
   updateDocumentSchema
 } from "./documents.schemas";
 import {
   createCategory,
   createDocument,
+  createDocumentVersion,
   getDocumentById,
   listCategories,
   listDocuments,
+  listDocumentVersions,
+  setCurrentDocumentVersion,
   updateDocument
 } from "./documents.service";
 
@@ -52,6 +56,39 @@ export const patchDocument: RequestHandler = async (req, res, next) => {
     const input = updateDocumentSchema.parse(req.body);
     const document = await updateDocument(req.params.id, input);
 
+    res.json({ document });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getDocumentVersions: RequestHandler = async (req, res, next) => {
+  try {
+    const versions = await listDocumentVersions(req.params.id);
+    res.json({ versions });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const postDocumentVersion: RequestHandler = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      throw new HttpError(401, "Unauthorized");
+    }
+
+    const input = createDocumentVersionSchema.parse(req.body);
+    const version = await createDocumentVersion(req.params.id, input, req.user.id);
+
+    res.status(201).json({ version });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const patchCurrentDocumentVersion: RequestHandler = async (req, res, next) => {
+  try {
+    const document = await setCurrentDocumentVersion(req.params.id, req.params.versionId);
     res.json({ document });
   } catch (error) {
     next(error);
