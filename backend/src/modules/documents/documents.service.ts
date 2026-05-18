@@ -1,6 +1,18 @@
 import { prisma } from "../../config/prisma";
 import { HttpError } from "../../utils/http-error";
-import type { CreateCategoryInput, CreateDocumentInput, UpdateDocumentInput } from "./documents.schemas";
+import type {
+  CreateCategoryInput,
+  CreateDocumentInput,
+  CreateDocumentVersionInput,
+  UpdateDocumentInput
+} from "./documents.schemas";
+
+const toPublicVersion = (version: any) => ({
+  ...version,
+  id: version.id.toString(),
+  documentId: version.documentId.toString(),
+  uploadedBy: version.uploadedBy?.toString() ?? null
+});
 
 const toPublicDocument = (document: any) => ({
   ...document,
@@ -20,7 +32,8 @@ const toPublicDocument = (document: any) => ({
         name: document.owner.name,
         email: document.owner.email
       }
-    : null
+    : null,
+  currentVersion: document.currentVersion ? toPublicVersion(document.currentVersion) : null
 });
 
 const parseOptionalBigInt = (value?: string | null) => {
@@ -36,6 +49,7 @@ export const listDocuments = async () => {
     orderBy: { createdAt: "desc" },
     include: {
       category: true,
+      currentVersion: true,
       owner: {
         select: {
           id: true,
@@ -54,6 +68,7 @@ export const getDocumentById = async (id: string) => {
     where: { id: BigInt(id) },
     include: {
       category: true,
+      currentVersion: true,
       owner: {
         select: {
           id: true,
@@ -76,12 +91,7 @@ export const getDocumentById = async (id: string) => {
 
   return {
     ...toPublicDocument(document),
-    versions: document.versions.map((version) => ({
-      ...version,
-      id: version.id.toString(),
-      documentId: version.documentId.toString(),
-      uploadedBy: version.uploadedBy?.toString() ?? null
-    })),
+    versions: document.versions.map(toPublicVersion),
     approvals: document.approvals.map((approval) => ({
       ...approval,
       id: approval.id.toString(),
@@ -103,6 +113,7 @@ export const createDocument = async (input: CreateDocumentInput, ownerId: string
     },
     include: {
       category: true,
+      currentVersion: true,
       owner: {
         select: {
           id: true,
@@ -135,6 +146,85 @@ export const updateDocument = async (id: string, input: UpdateDocumentInput) => 
     },
     include: {
       category: true,
+      currentVersion: true,
+      owner: {
+        select: {
+          id: true,
+          name: true,
+          email: true
+        }
+      }
+    }
+  });
+
+  return toPublicDocument(document);
+};
+
+export const createDocumentVersion = async (
+  documentId: string,
+  input: CreateDocumentVersionInput,
+  uploadedBy: string
+) => {
+  await getDocumentById(documentId);
+
+  const result = await prisma.$transaction(async (tx) => {
+    const version = await tx.documentVersion.create({
+      data: {
+        documentId: BigInt(documentId),
+        versionNumber: input.versionNumber,
+        fileUrl: input.fileUrl,
+        fileName: input.fileName,
+        fileType: input.fileType,
+        uploadedBy: BigInt(uploadedBy),
+        changeNotes: input.changeNotes
+      }
+    });
+
+    if (input.setAsCurrent) {
+      await tx.document.update({
+        where: { id: BigInt(documentId) },
+        data: {
+          currentVersionId: version.id,
+          status: "draft"
+        }
+      });
+    }
+
+    return version;
+  });
+
+  return toPublicVersion(result);
+};
+
+export const listDocumentVersions = async (documentId: string) => {
+  await getDocumentById(documentId);
+
+  const versions = await prisma.documentVersion.findMany({
+    where: { documentId: BigInt(documentId) },
+    orderBy: { createdAt: "desc" }
+  });
+
+  return versions.map(toPublicVersion);
+};
+
+export const setCurrentDocumentVersion = async (documentId: string, versionId: string) => {
+  const version = await prisma.documentVersion.findFirst({
+    where: {
+      id: BigInt(versionId),
+      documentId: BigInt(documentId)
+    }
+  });
+
+  if (!version) {
+    throw new HttpError(404, "Document version not found");
+  }
+
+  const document = await prisma.document.update({
+    where: { id: BigInt(documentId) },
+    data: { currentVersionId: BigInt(versionId) },
+    include: {
+      category: true,
+      currentVersion: true,
       owner: {
         select: {
           id: true,
