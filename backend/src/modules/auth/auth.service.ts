@@ -21,6 +21,24 @@ const publicUserFields = {
   updatedAt: true
 };
 
+const toPublicUser = (user: {
+  id: bigint;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  createdAt: Date;
+  updatedAt: Date;
+}) => ({
+  id: user.id.toString(),
+  name: user.name,
+  email: user.email,
+  role: user.role,
+  status: user.status,
+  createdAt: user.createdAt,
+  updatedAt: user.updatedAt
+});
+
 export const registerUser = async (input: RegisterInput) => {
   const existingUser = await prisma.user.findUnique({
     where: { email: input.email.toLowerCase() }
@@ -44,7 +62,7 @@ export const registerUser = async (input: RegisterInput) => {
 
   const token = createToken(user.id.toString(), user.role);
 
-  return { user, token };
+  return { user: toPublicUser(user), token };
 };
 
 export const loginUser = async (input: LoginInput) => {
@@ -69,15 +87,7 @@ export const loginUser = async (input: LoginInput) => {
   const token = createToken(user.id.toString(), user.role);
 
   return {
-    user: {
-      id: user.id,
-      name: user.name,
-      email: user.email,
-      role: user.role,
-      status: user.status,
-      createdAt: user.createdAt,
-      updatedAt: user.updatedAt
-    },
+    user: toPublicUser(user),
     token
   };
 };
