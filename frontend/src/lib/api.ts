@@ -45,6 +45,20 @@ export type Document = {
   versions?: DocumentVersion[];
 };
 
+export type Approval = {
+  id: string;
+  documentId: string;
+  documentVersionId: string;
+  approverId: string;
+  status: "pending" | "approved" | "rejected";
+  comment?: string | null;
+  decidedAt?: string | null;
+  createdAt: string;
+  document?: Document | null;
+  documentVersion?: DocumentVersion | null;
+  approver?: Pick<User, "id" | "name" | "email"> | null;
+};
+
 export type LoginResponse = {
   user: User;
   token: string;
