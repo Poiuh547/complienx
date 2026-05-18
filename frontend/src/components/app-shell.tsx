@@ -1,13 +1,17 @@
+"use client";
+
+import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { BarChart3, CheckSquare, FileText, Home, Settings, ShieldCheck, Users } from "lucide-react";
 
 const navigation = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
   { label: "Documentos", href: "/documents", icon: FileText },
-  { label: "Aprobaciones", href: "#", icon: ShieldCheck },
-  { label: "Acciones", href: "#", icon: CheckSquare },
-  { label: "Indicadores", href: "#", icon: BarChart3 },
-  { label: "Usuarios", href: "#", icon: Users },
-  { label: "Configuración", href: "#", icon: Settings }
+  { label: "Aprobaciones", href: "/approvals", icon: ShieldCheck },
+  { label: "Acciones", href: "/actions", icon: CheckSquare },
+  { label: "Indicadores", href: "/indicators", icon: BarChart3 },
+  { label: "Usuarios", href: "/users", icon: Users },
+  { label: "Configuración", href: "/settings", icon: Settings }
 ];
 
 type AppShellProps = {
@@ -18,21 +22,23 @@ type AppShellProps = {
 };
 
 export function AppShell({ children, title, description, activeItem }: AppShellProps) {
+  const pathname = usePathname();
+
   return (
     <main className="min-h-screen bg-slate-50">
       <aside className="fixed inset-y-0 left-0 hidden w-64 bg-slate-950 p-6 text-white lg:block">
-        <div>
+        <Link href="/dashboard">
           <h1 className="text-lg font-semibold">Complienx</h1>
           <p className="mt-1 text-xs text-slate-400">Sistema de cumplimiento</p>
-        </div>
+        </Link>
 
         <nav className="mt-10 space-y-2 text-sm">
           {navigation.map((item) => {
             const Icon = item.icon;
-            const isActive = item.label === activeItem;
+            const isActive = activeItem ? item.label === activeItem : pathname === item.href || pathname.startsWith(`${item.href}/`);
 
             return (
-              <a
+              <Link
                 className={`flex items-center gap-3 rounded-xl px-4 py-3 ${
                   isActive ? "bg-blue-600 text-white" : "text-slate-300 hover:bg-slate-900"
                 }`}
@@ -41,7 +47,7 @@ export function AppShell({ children, title, description, activeItem }: AppShellP
               >
                 <Icon size={18} />
                 {item.label}
-              </a>
+              </Link>
             );
           })}
         </nav>
