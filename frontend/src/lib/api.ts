@@ -59,6 +59,31 @@ export type Approval = {
   approver?: Pick<User, "id" | "name" | "email"> | null;
 };
 
+export type ActionComment = {
+  id: string;
+  actionId: string;
+  userId: string;
+  comment: string;
+  createdAt: string;
+  user?: Pick<User, "id" | "name" | "email"> | null;
+};
+
+export type ComplianceAction = {
+  id: string;
+  title: string;
+  description?: string | null;
+  type: "corrective" | "preventive" | "improvement";
+  priority: "low" | "medium" | "high" | "critical";
+  status: "open" | "in_progress" | "in_review" | "closed" | "cancelled";
+  ownerId?: string | null;
+  dueDate?: string | null;
+  closedAt?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  owner?: Pick<User, "id" | "name" | "email"> | null;
+  comments?: ActionComment[];
+};
+
 export type LoginResponse = {
   user: User;
   token: string;
