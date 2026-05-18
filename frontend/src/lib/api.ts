@@ -1,13 +1,52 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
+export type User = {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+};
+
+export type DocumentCategory = {
+  id: string;
+  name: string;
+  description?: string | null;
+  createdAt?: string;
+  updatedAt?: string;
+};
+
+export type DocumentVersion = {
+  id: string;
+  documentId: string;
+  versionNumber: string;
+  fileUrl: string;
+  fileName: string;
+  fileType?: string | null;
+  uploadedBy?: string | null;
+  changeNotes?: string | null;
+  createdAt: string;
+};
+
+export type Document = {
+  id: string;
+  title: string;
+  description?: string | null;
+  categoryId?: string | null;
+  ownerId?: string | null;
+  status: string;
+  currentVersionId?: string | null;
+  reviewDueDate?: string | null;
+  createdAt: string;
+  updatedAt: string;
+  category?: DocumentCategory | null;
+  owner?: Pick<User, "id" | "name" | "email"> | null;
+  currentVersion?: DocumentVersion | null;
+  versions?: DocumentVersion[];
+};
+
 export type LoginResponse = {
-  user: {
-    id: string;
-    name: string;
-    email: string;
-    role: string;
-    status: string;
-  };
+  user: User;
   token: string;
 };
 
@@ -38,8 +77,28 @@ export async function apiFetch<T>(path: string, token: string, options: RequestI
   });
 
   if (!response.ok) {
-    throw new Error("Error al consultar la API");
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(errorBody?.error?.message ?? "Error al consultar la API");
   }
 
   return response.json();
+}
+
+export function getStoredToken() {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("complienx_token");
+}
+
+export function getStoredUser(): User | null {
+  if (typeof window === "undefined") return null;
+
+  const rawUser = localStorage.getItem("complienx_user");
+
+  if (!rawUser) return null;
+
+  try {
+    return JSON.parse(rawUser) as User;
+  } catch {
+    return null;
+  }
 }
