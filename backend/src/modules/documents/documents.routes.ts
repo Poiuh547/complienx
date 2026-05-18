@@ -1,11 +1,22 @@
 import { Router } from "express";
+import { requireAuth } from "../../middlewares/auth.middleware";
+import {
+  getCategories,
+  getDocument,
+  getDocuments,
+  patchDocument,
+  postCategory,
+  postDocument
+} from "./documents.controller";
 
 export const documentsRouter = Router();
 
-documentsRouter.get("/", (_req, res) => {
-  res.status(501).json({ message: "List documents endpoint pending implementation" });
-});
+documentsRouter.use(requireAuth);
 
-documentsRouter.post("/", (_req, res) => {
-  res.status(501).json({ message: "Create document endpoint pending implementation" });
-});
+documentsRouter.get("/categories", getCategories);
+documentsRouter.post("/categories", postCategory);
+
+documentsRouter.get("/", getDocuments);
+documentsRouter.post("/", postDocument);
+documentsRouter.get("/:id", getDocument);
+documentsRouter.patch("/:id", patchDocument);
