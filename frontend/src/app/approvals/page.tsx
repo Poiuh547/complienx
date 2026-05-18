@@ -1,17 +1,133 @@
-import { PlaceholderPage } from "@/components/placeholder-page";
+"use client";
+
+import { useEffect, useState } from "react";
+import { Check, RefreshCw } from "lucide-react";
+import { AppShell } from "@/components/app-shell";
+import { apiFetch, getStoredToken, type Approval } from "@/lib/api";
 
 export default function ApprovalsPage() {
+  const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [processingId, setProcessingId] = useState<string | null>(null);
+  const [comments, setComments] = useState<Record<string, string>>({});
+  const [error, setError] = useState("");
+
+  const fetchApprovals = async () => {
+    const token = getStoredToken();
+
+    if (!token) {
+      window.location.href = "/";
+      return;
+    }
+
+    setLoading(true);
+    setError("");
+
+    try {
+      const response = await apiFetch<{ approvals: Approval[] }>("/api/approvals/pending", token);
+      setApprovals(response.approvals);
+    } catch {
+      setError("No se pudieron cargar las aprobaciones pendientes.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchApprovals();
+  }, []);
+
+  const decideApproval = async (approvalId: string, decision: "approve" | "reject") => {
+    const token = getStoredToken();
+    if (!token) return;
+
+    setProcessingId(approvalId);
+    setError("");
+
+    try {
+      await apiFetch(`/api/approvals/${approvalId}/${decision}`, token, {
+        method: "POST",
+        body: JSON.stringify({ comment: comments[approvalId] || undefined })
+      });
+      await fetchApprovals();
+    } catch {
+      setError(decision === "approve" ? "No se pudo aprobar el documento." : "No se pudo rechazar el documento.");
+    } finally {
+      setProcessingId(null);
+    }
+  };
+
   return (
-    <PlaceholderPage
-      activeItem="Aprobaciones"
-      description="Bandeja para revisar documentos enviados a aprobación, aprobarlos, rechazarlos y dejar evidencia de la decisión."
-      items={[
-        "Ver documentos pendientes de revisión",
-        "Aprobar o rechazar con comentarios",
-        "Consultar historial de decisiones",
-        "Generar tareas de seguimiento"
-      ]}
-      title="Aprobaciones"
-    />
+    <AppShell activeItem="Aprobaciones" description="Revisa documentos enviados a aprobación." title="Aprobaciones">
+      <div className="space-y-6">
+        <section className="grid gap-4 md:grid-cols-3">
+          <article className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <p className="text-sm text-slate-500">Pendientes</p>
+            <p className="mt-3 text-3xl font-semibold text-slate-950">{approvals.length}</p>
+          </article>
+          <article className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <p className="text-sm text-slate-500">En revisión</p>
+            <p className="mt-3 text-3xl font-semibold text-slate-950">{approvals.length}</p>
+          </article>
+          <article className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+            <p className="text-sm text-slate-500">Flujo activo</p>
+            <p className="mt-3 text-3xl font-semibold text-slate-950">OK</p>
+          </article>
+        </section>
+
+        <section className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+          <div className="flex flex-col gap-4 border-b border-slate-200 p-6 md:flex-row md:items-center md:justify-between">
+            <div>
+              <h3 className="text-base font-semibold text-slate-950">Bandeja de aprobación</h3>
+              <p className="mt-1 text-sm text-slate-500">Documentos pendientes de decisión.</p>
+            </div>
+            <button className="inline-flex items-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={fetchApprovals} type="button">
+              <RefreshCw size={16} />
+              Actualizar
+            </button>
+          </div>
+
+          {error ? <p className="m-6 rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+
+          {loading ? (
+            <div className="p-6 text-sm text-slate-500">Cargando aprobaciones...</div>
+          ) : approvals.length === 0 ? (
+            <div className="p-12 text-center">
+              <h4 className="text-base font-semibold text-slate-950">No hay aprobaciones pendientes</h4>
+              <p className="mt-2 text-sm text-slate-500">Cuando envíes un documento a revisión, aparecerá aquí.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {approvals.map((approval) => (
+                <article className="p-6" key={approval.id}>
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div>
+                      <p className="text-xs font-medium uppercase tracking-wide text-blue-600">Pendiente de aprobación</p>
+                      <h4 className="mt-2 text-lg font-semibold text-slate-950">{approval.document?.title ?? "Documento sin título"}</h4>
+                      <p className="mt-1 text-sm text-slate-500">Versión {approval.documentVersion?.versionNumber ?? "sin versión"} · {approval.documentVersion?.fileName ?? "sin archivo"}</p>
+                      <p className="mt-1 text-sm text-slate-500">Responsable: {approval.document?.owner?.name ?? "Sin responsable"}</p>
+                      <a className="mt-3 inline-block text-sm font-medium text-blue-600 hover:text-blue-700" href={`/documents/${approval.documentId}`}>Ver documento</a>
+                    </div>
+
+                    <div className="w-full max-w-xl space-y-3">
+                      <textarea className="min-h-24 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" onChange={(event) => setComments((current) => ({ ...current, [approval.id]: event.target.value }))} placeholder="Comentario de aprobación o rechazo" value={comments[approval.id] ?? ""} />
+                      <div className="flex flex-col gap-3 sm:flex-row sm:justify-end">
+                        <button className="inline-flex items-center justify-center gap-2 rounded-xl border border-red-200 px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50" disabled={processingId === approval.id} onClick={() => decideApproval(approval.id, "reject")} type="button">
+                          Rechazar
+                        </button>
+                        <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300" disabled={processingId === approval.id} onClick={() => decideApproval(approval.id, "approve")} type="button">
+                          <Check size={16} />
+                          Aprobar
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </AppShell>
   );
 }
