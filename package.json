@@ -1,0 +1,16 @@
+{
+  "name": "complienx",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Complienx monorepo for frontend and backend.",
+  "scripts": {
+    "install:all": "npm install && npm --prefix backend install && npm --prefix frontend install",
+    "dev": "concurrently -n backend,frontend -c blue,green \"npm --prefix backend run dev\" \"npm --prefix frontend run dev\"",
+    "dev:backend": "npm --prefix backend run dev",
+    "dev:frontend": "npm --prefix frontend run dev",
+    "build": "npm --prefix backend run build && npm --prefix frontend run build"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}
