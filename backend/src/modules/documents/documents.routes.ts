@@ -4,9 +4,12 @@ import {
   getCategories,
   getDocument,
   getDocuments,
+  getDocumentVersions,
+  patchCurrentDocumentVersion,
   patchDocument,
   postCategory,
-  postDocument
+  postDocument,
+  postDocumentVersion
 } from "./documents.controller";
 
 export const documentsRouter = Router();
@@ -20,3 +23,6 @@ documentsRouter.get("/", getDocuments);
 documentsRouter.post("/", postDocument);
 documentsRouter.get("/:id", getDocument);
 documentsRouter.patch("/:id", patchDocument);
+documentsRouter.get("/:id/versions", getDocumentVersions);
+documentsRouter.post("/:id/versions", postDocumentVersion);
+documentsRouter.patch("/:id/versions/:versionId/current", patchCurrentDocumentVersion);
