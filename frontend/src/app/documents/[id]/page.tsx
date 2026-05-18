@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, FileText, RefreshCw, Save } from "lucide-react";
+import { ArrowLeft, Edit, FileText, RefreshCw, Save } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { apiFetch, getStoredToken, type Document } from "@/lib/api";
 
@@ -108,14 +108,23 @@ export default function DocumentDetailPage({ params }: PageProps) {
             Volver a documentos
           </a>
 
-          <button
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={fetchDocument}
-            type="button"
-          >
-            <RefreshCw size={16} />
-            Actualizar
-          </button>
+          <div className="flex gap-3">
+            <button
+              className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+              onClick={fetchDocument}
+              type="button"
+            >
+              <RefreshCw size={16} />
+              Actualizar
+            </button>
+            <a
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700"
+              href={`/documents/${params.id}/edit`}
+            >
+              <Edit size={16} />
+              Editar
+            </a>
+          </div>
         </div>
 
         {error ? <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
@@ -218,64 +227,30 @@ export default function DocumentDetailPage({ params }: PageProps) {
                 <form className="mt-6 space-y-4" onSubmit={handleCreateVersion}>
                   <div>
                     <label className="text-sm font-medium text-slate-700" htmlFor="versionNumber">Número de versión</label>
-                    <input
-                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                      id="versionNumber"
-                      onChange={(event) => setVersionNumber(event.target.value)}
-                      placeholder="1.0"
-                      value={versionNumber}
-                    />
+                    <input className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" id="versionNumber" onChange={(event) => setVersionNumber(event.target.value)} placeholder="1.0" value={versionNumber} />
                   </div>
 
                   <div>
                     <label className="text-sm font-medium text-slate-700" htmlFor="fileName">Nombre del archivo</label>
-                    <input
-                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                      id="fileName"
-                      onChange={(event) => setFileName(event.target.value)}
-                      placeholder="manual-calidad-v1.pdf"
-                      value={fileName}
-                    />
+                    <input className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" id="fileName" onChange={(event) => setFileName(event.target.value)} placeholder="manual-calidad-v1.pdf" value={fileName} />
                   </div>
 
                   <div>
                     <label className="text-sm font-medium text-slate-700" htmlFor="fileUrl">URL del archivo</label>
-                    <input
-                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                      id="fileUrl"
-                      onChange={(event) => setFileUrl(event.target.value)}
-                      placeholder="local://manual-calidad-v1.pdf"
-                      value={fileUrl}
-                    />
+                    <input className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" id="fileUrl" onChange={(event) => setFileUrl(event.target.value)} placeholder="local://manual-calidad-v1.pdf" value={fileUrl} />
                   </div>
 
                   <div>
                     <label className="text-sm font-medium text-slate-700" htmlFor="fileType">Tipo de archivo</label>
-                    <input
-                      className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                      id="fileType"
-                      onChange={(event) => setFileType(event.target.value)}
-                      placeholder="application/pdf"
-                      value={fileType}
-                    />
+                    <input className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" id="fileType" onChange={(event) => setFileType(event.target.value)} placeholder="application/pdf" value={fileType} />
                   </div>
 
                   <div>
                     <label className="text-sm font-medium text-slate-700" htmlFor="changeNotes">Notas de cambio</label>
-                    <textarea
-                      className="mt-2 min-h-24 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                      id="changeNotes"
-                      onChange={(event) => setChangeNotes(event.target.value)}
-                      placeholder="Versión inicial del documento"
-                      value={changeNotes}
-                    />
+                    <textarea className="mt-2 min-h-24 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" id="changeNotes" onChange={(event) => setChangeNotes(event.target.value)} placeholder="Versión inicial del documento" value={changeNotes} />
                   </div>
 
-                  <button
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-                    disabled={savingVersion}
-                    type="submit"
-                  >
+                  <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300" disabled={savingVersion} type="submit">
                     <Save size={16} />
                     {savingVersion ? "Guardando..." : "Agregar versión"}
                   </button>
