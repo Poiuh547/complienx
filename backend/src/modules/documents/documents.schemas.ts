@@ -20,6 +20,16 @@ export const createCategorySchema = z.object({
   description: z.string().max(1000).optional()
 });
 
+export const createDocumentVersionSchema = z.object({
+  versionNumber: z.string().min(1).max(30),
+  fileUrl: z.string().min(1).max(2000),
+  fileName: z.string().min(1).max(255),
+  fileType: z.string().max(120).optional(),
+  changeNotes: z.string().max(2000).optional(),
+  setAsCurrent: z.boolean().optional().default(true)
+});
+
 export type CreateDocumentInput = z.infer<typeof createDocumentSchema>;
 export type UpdateDocumentInput = z.infer<typeof updateDocumentSchema>;
 export type CreateCategoryInput = z.infer<typeof createCategorySchema>;
+export type CreateDocumentVersionInput = z.infer<typeof createDocumentVersionSchema>;
