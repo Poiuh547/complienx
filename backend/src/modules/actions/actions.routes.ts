@@ -1,11 +1,19 @@
 import { Router } from "express";
+import { requireAuth } from "../../middlewares/auth.middleware";
+import {
+  getAction,
+  getActions,
+  patchAction,
+  postAction,
+  postActionComment
+} from "./actions.controller";
 
 export const actionsRouter = Router();
 
-actionsRouter.get("/", (_req, res) => {
-  res.status(501).json({ message: "List actions endpoint pending implementation" });
-});
+actionsRouter.use(requireAuth);
 
-actionsRouter.post("/", (_req, res) => {
-  res.status(501).json({ message: "Create action endpoint pending implementation" });
-});
+actionsRouter.get("/", getActions);
+actionsRouter.post("/", postAction);
+actionsRouter.get("/:id", getAction);
+actionsRouter.patch("/:id", patchAction);
+actionsRouter.post("/:id/comments", postActionComment);
