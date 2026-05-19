@@ -86,6 +86,39 @@ export const postDocumentVersion: RequestHandler = async (req, res, next) => {
   }
 };
 
+export const postDocumentVersionUpload: RequestHandler = async (req, res, next) => {
+  try {
+    if (!req.user) {
+      throw new HttpError(401, "Unauthorized");
+    }
+
+    if (!req.file) {
+      throw new HttpError(400, "File is required");
+    }
+
+    const versionNumber = typeof req.body.versionNumber === "string" ? req.body.versionNumber : "";
+
+    if (!versionNumber.trim()) {
+      throw new HttpError(400, "Version number is required");
+    }
+
+    const input = createDocumentVersionSchema.parse({
+      versionNumber,
+      fileUrl: `/uploads/documents/${req.file.filename}`,
+      fileName: req.file.originalname,
+      fileType: req.file.mimetype,
+      changeNotes: typeof req.body.changeNotes === "string" ? req.body.changeNotes : undefined,
+      setAsCurrent: req.body.setAsCurrent === undefined ? true : req.body.setAsCurrent === "true"
+    });
+
+    const version = await createDocumentVersion(req.params.id, input, req.user.id);
+
+    res.status(201).json({ version });
+  } catch (error) {
+    next(error);
+  }
+};
+
 export const patchCurrentDocumentVersion: RequestHandler = async (req, res, next) => {
   try {
     const document = await setCurrentDocumentVersion(req.params.id, req.params.versionId);
