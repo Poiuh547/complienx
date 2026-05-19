@@ -1,13 +1,14 @@
 "use client";
 
 import { usePathname } from "next/navigation";
-import { BarChart3, CheckSquare, FileText, Home, Settings, ShieldCheck, Users } from "lucide-react";
+import { BarChart3, CheckSquare, ClipboardList, FileText, Home, Settings, ShieldCheck, Users } from "lucide-react";
 
 const navigation = [
   { label: "Dashboard", href: "/dashboard", icon: Home },
   { label: "Documentos", href: "/documents", icon: FileText },
   { label: "Aprobaciones", href: "/approvals", icon: ShieldCheck },
   { label: "Acciones", href: "/actions", icon: CheckSquare },
+  { label: "Tareas", href: "/tasks", icon: ClipboardList },
   { label: "Indicadores", href: "/indicators", icon: BarChart3 },
   { label: "Usuarios", href: "/users", icon: Users },
   { label: "Configuración", href: "/settings", icon: Settings }
