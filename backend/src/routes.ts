@@ -5,6 +5,7 @@ import { documentsRouter } from "./modules/documents/documents.routes";
 import { approvalsRouter } from "./modules/approvals/approvals.routes";
 import { actionsRouter } from "./modules/actions/actions.routes";
 import { tasksRouter } from "./modules/tasks/tasks.routes";
+import { dashboardRouter } from "./modules/dashboard/dashboard.routes";
 
 export const routes = Router();
 
@@ -14,3 +15,4 @@ routes.use("/documents", documentsRouter);
 routes.use("/approvals", approvalsRouter);
 routes.use("/actions", actionsRouter);
 routes.use("/tasks", tasksRouter);
+routes.use("/dashboard", dashboardRouter);
