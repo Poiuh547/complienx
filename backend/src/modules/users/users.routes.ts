@@ -1,11 +1,12 @@
 import { Router } from "express";
 import { requireAuth } from "../../middlewares/auth.middleware";
-import { me } from "./users.controller";
+import { getUsers, me, patchUser, postUser } from "./users.controller";
 
 export const usersRouter = Router();
 
-usersRouter.get("/me", requireAuth, me);
+usersRouter.use(requireAuth);
 
-usersRouter.get("/", (_req, res) => {
-  res.status(501).json({ message: "List users endpoint pending implementation" });
-});
+usersRouter.get("/me", me);
+usersRouter.get("/", getUsers);
+usersRouter.post("/", postUser);
+usersRouter.patch("/:id", patchUser);
