@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowLeft, Edit, FileText, RefreshCw, Save, Send, Upload } from "lucide-react";
+import { use, useEffect, useState } from "react";
+import { ArrowLeft, Edit, FileText, RefreshCw, Send, Upload } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { API_URL, apiFetch, getStoredToken, type Document, uploadFetch } from "@/lib/api";
 
@@ -14,9 +14,10 @@ const statusLabels: Record<string, string> = {
   archived: "Archivado"
 };
 
-type PageProps = { params: { id: string } };
+type PageProps = { params: Promise<{ id: string }> };
 
 export default function DocumentDetailPage({ params }: PageProps) {
+  const { id } = use(params);
   const [document, setDocument] = useState<Document | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingVersion, setSavingVersion] = useState(false);
@@ -37,7 +38,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
     setError("");
 
     try {
-      const response = await apiFetch<{ document: Document }>(`/api/documents/${params.id}`, token);
+      const response = await apiFetch<{ document: Document }>(`/api/documents/${id}`, token);
       setDocument(response.document);
     } catch {
       setError("No se pudo cargar el documento.");
@@ -48,7 +49,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
 
   useEffect(() => {
     fetchDocument();
-  }, [params.id]);
+  }, [id]);
 
   const handleSubmitForApproval = async () => {
     const token = getStoredToken();
@@ -58,7 +59,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
     setSubmittingApproval(true);
 
     try {
-      await apiFetch(`/api/approvals/documents/${params.id}/submit`, token, { method: "POST" });
+      await apiFetch(`/api/approvals/documents/${id}/submit`, token, { method: "POST" });
       await fetchDocument();
     } catch (error) {
       setError(error instanceof Error ? error.message : "No se pudo enviar a revisión.");
@@ -96,7 +97,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
     setSavingVersion(true);
 
     try {
-      await uploadFetch(`/api/documents/${params.id}/versions/upload`, token, formData);
+      await uploadFetch(`/api/documents/${id}/versions/upload`, token, formData);
       setVersionNumber("");
       setSelectedFile(null);
       setChangeNotes("");
@@ -128,7 +129,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
               <Send size={16} />
               {submittingApproval ? "Enviando..." : "Enviar a revisión"}
             </button>
-            <a className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" href={`/documents/${params.id}/edit`}>
+            <a className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" href={`/documents/${id}/edit`}>
               <Edit size={16} />
               Editar
             </a>
