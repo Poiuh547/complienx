@@ -1,11 +1,10 @@
 import { Router } from "express";
+import { requireAuth } from "../../middlewares/auth.middleware";
+import { getDashboardTasks } from "./tasks.controller";
 
 export const tasksRouter = Router();
 
-tasksRouter.get("/", (_req, res) => {
-  res.status(501).json({ message: "List tasks endpoint pending implementation" });
-});
+tasksRouter.use(requireAuth);
 
-tasksRouter.patch("/:id/complete", (_req, res) => {
-  res.status(501).json({ message: "Complete task endpoint pending implementation" });
-});
+tasksRouter.get("/dashboard", getDashboardTasks);
+tasksRouter.get("/", getDashboardTasks);
