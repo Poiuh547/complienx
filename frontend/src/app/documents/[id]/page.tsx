@@ -1,9 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, Edit, FileText, RefreshCw, Save, Send } from "lucide-react";
+import { ArrowLeft, Edit, FileText, RefreshCw, Save, Send, Upload } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { apiFetch, getStoredToken, type Document } from "@/lib/api";
+import { API_URL, apiFetch, getStoredToken, type Document, uploadFetch } from "@/lib/api";
 
 const statusLabels: Record<string, string> = {
   draft: "Borrador",
@@ -23,9 +23,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
   const [submittingApproval, setSubmittingApproval] = useState(false);
   const [error, setError] = useState("");
   const [versionNumber, setVersionNumber] = useState("1.0");
-  const [fileName, setFileName] = useState("");
-  const [fileUrl, setFileUrl] = useState("");
-  const [fileType, setFileType] = useState("application/pdf");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [changeNotes, setChangeNotes] = useState("");
 
   const fetchDocument = async () => {
@@ -69,7 +67,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
     }
   };
 
-  const handleCreateVersion = async (event: React.FormEvent<HTMLFormElement>) => {
+  const handleUploadVersion = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
 
@@ -79,33 +77,34 @@ export default function DocumentDetailPage({ params }: PageProps) {
       return;
     }
 
-    if (!versionNumber.trim() || !fileName.trim() || !fileUrl.trim()) {
-      setError("Número de versión, nombre de archivo y URL son obligatorios.");
+    if (!versionNumber.trim()) {
+      setError("El número de versión es obligatorio.");
       return;
     }
+
+    if (!selectedFile) {
+      setError("Selecciona un archivo para subir.");
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append("versionNumber", versionNumber);
+    formData.append("changeNotes", changeNotes);
+    formData.append("setAsCurrent", "true");
+    formData.append("file", selectedFile);
 
     setSavingVersion(true);
 
     try {
-      await apiFetch(`/api/documents/${params.id}/versions`, token, {
-        method: "POST",
-        body: JSON.stringify({
-          versionNumber,
-          fileName,
-          fileUrl,
-          fileType: fileType || undefined,
-          changeNotes: changeNotes || undefined,
-          setAsCurrent: true
-        })
-      });
-
+      await uploadFetch(`/api/documents/${params.id}/versions/upload`, token, formData);
       setVersionNumber("");
-      setFileName("");
-      setFileUrl("");
+      setSelectedFile(null);
       setChangeNotes("");
+      const fileInput = window.document.getElementById("documentFile") as HTMLInputElement | null;
+      if (fileInput) fileInput.value = "";
       await fetchDocument();
-    } catch {
-      setError("No se pudo agregar la versión.");
+    } catch (error) {
+      setError(error instanceof Error ? error.message : "No se pudo subir el archivo.");
     } finally {
       setSavingVersion(false);
     }
@@ -170,7 +169,9 @@ export default function DocumentDetailPage({ params }: PageProps) {
                     <p className="text-sm font-semibold text-slate-950">Versión {document.currentVersion.versionNumber}</p>
                     <p className="mt-1 text-sm text-slate-600">{document.currentVersion.fileName}</p>
                     <p className="mt-1 text-xs text-slate-500">{document.currentVersion.fileType || "Tipo no definido"}</p>
-                    <p className="mt-4 break-all rounded-lg bg-slate-50 p-3 text-xs text-slate-600">{document.currentVersion.fileUrl}</p>
+                    <a className="mt-4 block break-all rounded-lg bg-slate-50 p-3 text-xs font-medium text-blue-600 hover:text-blue-700" href={`${API_URL}${document.currentVersion.fileUrl}`} target="_blank">
+                      Abrir archivo
+                    </a>
                   </div>
                 ) : (
                   <p className="mt-4 rounded-xl bg-amber-50 px-4 py-3 text-sm text-amber-800">Este documento todavía no tiene una versión registrada.</p>
@@ -191,7 +192,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
                         <div className="flex items-start justify-between gap-4">
                           <div>
                             <p className="text-sm font-semibold text-slate-950">Versión {version.versionNumber}</p>
-                            <p className="mt-1 text-sm text-slate-600">{version.fileName}</p>
+                            <a className="mt-1 block text-sm font-medium text-blue-600 hover:text-blue-700" href={`${API_URL}${version.fileUrl}`} target="_blank">{version.fileName}</a>
                             {version.changeNotes ? <p className="mt-2 text-sm text-slate-500">{version.changeNotes}</p> : null}
                           </div>
                           {document.currentVersionId === version.id ? <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700">Actual</span> : null}
@@ -203,20 +204,25 @@ export default function DocumentDetailPage({ params }: PageProps) {
               </article>
 
               <article className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-                <h3 className="text-base font-semibold text-slate-950">Agregar versión</h3>
-                <p className="mt-1 text-sm text-slate-500">Por ahora registra la URL del archivo. Después agregaremos carga real.</p>
-                <form className="mt-6 space-y-4" onSubmit={handleCreateVersion}>
-                  <Input label="Número de versión" value={versionNumber} onChange={setVersionNumber} placeholder="1.0" />
-                  <Input label="Nombre del archivo" value={fileName} onChange={setFileName} placeholder="manual-calidad-v1.pdf" />
-                  <Input label="URL del archivo" value={fileUrl} onChange={setFileUrl} placeholder="local://manual-calidad-v1.pdf" />
-                  <Input label="Tipo de archivo" value={fileType} onChange={setFileType} placeholder="application/pdf" />
+                <h3 className="text-base font-semibold text-slate-950">Subir nueva versión</h3>
+                <p className="mt-1 text-sm text-slate-500">Selecciona un PDF, Word, Excel o imagen para registrarlo como versión actual.</p>
+                <form className="mt-6 space-y-4" onSubmit={handleUploadVersion}>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Número de versión</label>
+                    <input className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" onChange={(event) => setVersionNumber(event.target.value)} placeholder="1.0" value={versionNumber} />
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-slate-700">Archivo</label>
+                    <input id="documentFile" className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" onChange={(event) => setSelectedFile(event.target.files?.[0] ?? null)} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx,.png,.jpg,.jpeg" />
+                    {selectedFile ? <p className="mt-2 text-xs text-slate-500">Seleccionado: {selectedFile.name}</p> : null}
+                  </div>
                   <div>
                     <label className="text-sm font-medium text-slate-700">Notas de cambio</label>
-                    <textarea className="mt-2 min-h-24 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" onChange={(event) => setChangeNotes(event.target.value)} placeholder="Versión inicial del documento" value={changeNotes} />
+                    <textarea className="mt-2 min-h-24 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" onChange={(event) => setChangeNotes(event.target.value)} placeholder="Describe qué cambió en esta versión" value={changeNotes} />
                   </div>
                   <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300" disabled={savingVersion} type="submit">
-                    <Save size={16} />
-                    {savingVersion ? "Guardando..." : "Agregar versión"}
+                    <Upload size={16} />
+                    {savingVersion ? "Subiendo..." : "Subir versión"}
                   </button>
                 </form>
               </article>
@@ -233,15 +239,6 @@ function InfoCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl bg-slate-50 p-4">
       <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-2 text-sm font-medium text-slate-900">{value}</p>
-    </div>
-  );
-}
-
-function Input({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
-  return (
-    <div>
-      <label className="text-sm font-medium text-slate-700">{label}</label>
-      <input className="mt-2 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" onChange={(event) => onChange(event.target.value)} placeholder={placeholder} value={value} />
     </div>
   );
 }
