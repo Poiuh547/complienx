@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
+export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
 export type User = {
   id: string;
@@ -118,6 +118,23 @@ export async function apiFetch<T>(path: string, token: string, options: RequestI
   if (!response.ok) {
     const errorBody = await response.json().catch(() => null);
     throw new Error(errorBody?.error?.message ?? "Error al consultar la API");
+  }
+
+  return response.json();
+}
+
+export async function uploadFetch<T>(path: string, token: string, formData: FormData): Promise<T> {
+  const response = await fetch(`${API_URL}${path}`, {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`
+    },
+    body: formData
+  });
+
+  if (!response.ok) {
+    const errorBody = await response.json().catch(() => null);
+    throw new Error(errorBody?.error?.message ?? "Error al subir archivo");
   }
 
   return response.json();
