@@ -1,6 +1,11 @@
 import type { RequestHandler } from "express";
-import { loginSchema, registerSchema } from "./auth.schemas";
-import { loginUser, registerUser } from "./auth.service";
+import {
+  forgotPasswordSchema,
+  loginSchema,
+  registerSchema,
+  resetPasswordSchema
+} from "./auth.schemas";
+import { loginUser, registerUser, requestPasswordReset, resetPassword } from "./auth.service";
 
 export const register: RequestHandler = async (req, res, next) => {
   try {
@@ -17,6 +22,28 @@ export const login: RequestHandler = async (req, res, next) => {
   try {
     const input = loginSchema.parse(req.body);
     const result = await loginUser(input);
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const forgotPassword: RequestHandler = async (req, res, next) => {
+  try {
+    const input = forgotPasswordSchema.parse(req.body);
+    const result = await requestPasswordReset(input);
+
+    res.json(result);
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const resetPasswordController: RequestHandler = async (req, res, next) => {
+  try {
+    const input = resetPasswordSchema.parse(req.body);
+    const result = await resetPassword(input);
 
     res.json(result);
   } catch (error) {
