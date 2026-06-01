@@ -1,11 +1,13 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { login } from "@/lib/api";
+import { saveAuthSession } from "@/lib/auth-storage";
 
 export default function LoginPage() {
-  const [email, setEmail] = useState("admin@complienx.com");
-  const [password, setPassword] = useState("admin12345");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -16,8 +18,7 @@ export default function LoginPage() {
 
     try {
       const result = await login(email, password);
-      localStorage.setItem("complienx_token", result.token);
-      localStorage.setItem("complienx_user", JSON.stringify(result.user));
+      saveAuthSession(result);
       window.location.href = "/dashboard";
     } catch {
       setError("No se pudo iniciar sesión. Revisa tus datos.");
@@ -49,6 +50,7 @@ export default function LoginPage() {
               onChange={(event) => setEmail(event.target.value)}
               type="email"
               autoComplete="email"
+              required
             />
           </div>
 
@@ -63,7 +65,17 @@ export default function LoginPage() {
               onChange={(event) => setPassword(event.target.value)}
               type="password"
               autoComplete="current-password"
+              required
             />
+          </div>
+
+          <div className="flex items-center justify-between text-sm">
+            <Link className="font-medium text-blue-600 hover:text-blue-700" href="/forgot-password">
+              Olvidé mi contraseña
+            </Link>
+            <Link className="font-medium text-blue-600 hover:text-blue-700" href="/signup">
+              Crear cuenta
+            </Link>
           </div>
 
           {error ? <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
