@@ -1,0 +1,74 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserStatus {
+  active
+  inactive
+  invited
+  suspended
+}
+
+enum CompanyStatus {
+  active
+  inactive
+  suspended
+}
+
+enum CompanyRole {
+  company_admin
+  manager
+  collaborator
+  viewer
+}
+
+model Company {
+  id        BigInt        @id @default(autoincrement())
+  name      String        @db.VarChar(180)
+  legalName String?       @map("legal_name") @db.VarChar(220)
+  taxId     String?       @map("tax_id") @db.VarChar(80)
+  status    CompanyStatus @default(active)
+  createdAt DateTime      @default(now()) @map("created_at")
+  updatedAt DateTime      @updatedAt @map("updated_at")
+
+  users CompanyUser[]
+
+  @@map("companies")
+}
+
+model User {
+  id              BigInt     @id @default(autoincrement())
+  name            String     @db.VarChar(150)
+  email           String     @unique @db.VarChar(180)
+  passwordHash    String     @map("password_hash")
+  status          UserStatus @default(active)
+  isPlatformAdmin Boolean    @default(false) @map("is_platform_admin")
+  createdAt       DateTime   @default(now()) @map("created_at")
+  updatedAt       DateTime   @updatedAt @map("updated_at")
+
+  companies CompanyUser[]
+
+  @@map("users")
+}
+
+model CompanyUser {
+  id        BigInt      @id @default(autoincrement())
+  companyId BigInt      @map("company_id")
+  userId    BigInt      @map("user_id")
+  role      CompanyRole @default(collaborator)
+  status    UserStatus  @default(active)
+  createdAt DateTime    @default(now()) @map("created_at")
+  updatedAt DateTime    @updatedAt @map("updated_at")
+
+  company Company @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([companyId, userId])
+  @@index([userId])
+  @@map("company_users")
+}
