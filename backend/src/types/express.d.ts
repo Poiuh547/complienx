@@ -3,6 +3,8 @@ declare namespace Express {
     user?: {
       id: string;
       role: string;
+      companyId?: string;
+      isPlatformAdmin?: boolean;
     };
   }
 }
