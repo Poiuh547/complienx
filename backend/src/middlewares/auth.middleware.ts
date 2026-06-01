@@ -6,6 +6,8 @@ import { HttpError } from "../utils/http-error";
 type JwtPayload = {
   sub: string;
   role: string;
+  companyId?: string;
+  isPlatformAdmin?: boolean;
 };
 
 export const requireAuth: RequestHandler = (req, _res, next) => {
@@ -21,11 +23,22 @@ export const requireAuth: RequestHandler = (req, _res, next) => {
 
     req.user = {
       id: payload.sub,
-      role: payload.role
+      role: payload.role,
+      companyId: payload.companyId,
+      isPlatformAdmin: payload.isPlatformAdmin ?? false
     };
 
     next();
   } catch (error) {
     next(new HttpError(401, "Invalid or expired token"));
   }
+};
+
+export const requireCompany: RequestHandler = (req, _res, next) => {
+  if (!req.user?.companyId) {
+    next(new HttpError(403, "Company context is required"));
+    return;
+  }
+
+  next();
 };
