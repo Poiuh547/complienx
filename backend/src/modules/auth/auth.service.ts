@@ -1,9 +1,12 @@
 import bcrypt from "bcryptjs";
+import crypto from "crypto";
 import jwt from "jsonwebtoken";
 import { env } from "../../config/env";
 import { prisma } from "../../config/prisma";
 import { HttpError } from "../../utils/http-error";
-import type { LoginInput, RegisterInput } from "./auth.schemas";
+import type { ForgotPasswordInput, LoginInput, RegisterInput, ResetPasswordInput } from "./auth.schemas";
+
+const PASSWORD_RESET_TOKEN_MINUTES = 30;
 
 const createToken = (input: {
   userId: string;
@@ -22,6 +25,8 @@ const createToken = (input: {
     { expiresIn: env.JWT_EXPIRES_IN }
   );
 };
+
+const hashResetToken = (token: string) => crypto.createHash("sha256").update(token).digest("hex");
 
 const publicUserFields = {
   id: true,
@@ -171,4 +176,55 @@ export const loginUser = async (input: LoginInput) => {
     companies: activeMemberships.map(toPublicCompany),
     token
   };
+};
+
+export const requestPasswordReset = async (input: ForgotPasswordInput) => {
+  const user = await prisma.user.findUnique({
+    where: { email: input.email.toLowerCase() }
+  });
+
+  if (!user) {
+    return { message: "If the email exists, a reset link will be generated" };
+  }
+
+  const rawToken = crypto.randomBytes(32).toString("hex");
+  const expiresAt = new Date(Date.now() + PASSWORD_RESET_TOKEN_MINUTES * 60 * 1000);
+
+  await prisma.passwordResetToken.create({
+    data: {
+      userId: user.id,
+      tokenHash: hashResetToken(rawToken),
+      expiresAt
+    }
+  });
+
+  return {
+    message: "If the email exists, a reset link will be generated",
+    developmentResetToken: rawToken
+  };
+};
+
+export const resetPassword = async (input: ResetPasswordInput) => {
+  const resetToken = await prisma.passwordResetToken.findUnique({
+    where: { tokenHash: hashResetToken(input.token) }
+  });
+
+  if (!resetToken || resetToken.usedAt || resetToken.expiresAt < new Date()) {
+    throw new HttpError(400, "Invalid or expired reset token");
+  }
+
+  const passwordHash = await bcrypt.hash(input.password, 10);
+
+  await prisma.$transaction([
+    prisma.user.update({
+      where: { id: resetToken.userId },
+      data: { passwordHash }
+    }),
+    prisma.passwordResetToken.update({
+      where: { id: resetToken.id },
+      data: { usedAt: new Date() }
+    })
+  ]);
+
+  return { message: "Password updated successfully" };
 };
