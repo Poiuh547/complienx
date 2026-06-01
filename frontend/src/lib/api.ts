@@ -1,15 +1,24 @@
 export const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000";
 
+export type Company = {
+  id: string;
+  name: string;
+  status: string;
+  role: string;
+};
+
 export type User = {
   id: string;
   name: string;
   email: string;
   role: string;
   status: string;
+  isPlatformAdmin?: boolean;
 };
 
 export type DocumentCategory = {
   id: string;
+  companyId?: string;
   name: string;
   description?: string | null;
   createdAt?: string;
@@ -30,6 +39,7 @@ export type DocumentVersion = {
 
 export type Document = {
   id: string;
+  companyId?: string;
   title: string;
   description?: string | null;
   categoryId?: string | null;
@@ -70,6 +80,7 @@ export type ActionComment = {
 
 export type ComplianceAction = {
   id: string;
+  companyId?: string;
   title: string;
   description?: string | null;
   type: "corrective" | "preventive" | "improvement";
@@ -84,22 +95,84 @@ export type ComplianceAction = {
   comments?: ActionComment[];
 };
 
-export type LoginResponse = {
+export type AuthResponse = {
   user: User;
+  company?: Company | null;
+  companies?: Company[];
   token: string;
 };
 
-export async function login(email: string, password: string): Promise<LoginResponse> {
+export type ForgotPasswordResponse = {
+  message: string;
+  developmentResetToken?: string;
+};
+
+export async function login(email: string, password: string, companyId?: string): Promise<AuthResponse> {
   const response = await fetch(`${API_URL}/api/auth/login`, {
     method: "POST",
     headers: {
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ email, password })
+    body: JSON.stringify({ email, password, companyId })
   });
 
   if (!response.ok) {
     throw new Error("No se pudo iniciar sesión");
+  }
+
+  return response.json();
+}
+
+export async function signup(input: {
+  companyName: string;
+  legalName?: string;
+  taxId?: string;
+  name: string;
+  email: string;
+  password: string;
+}): Promise<AuthResponse> {
+  const response = await fetch(`${API_URL}/api/auth/register`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(input)
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudo crear la cuenta");
+  }
+
+  return response.json();
+}
+
+export async function forgotPassword(email: string): Promise<ForgotPasswordResponse> {
+  const response = await fetch(`${API_URL}/api/auth/forgot-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ email })
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudo generar la recuperación");
+  }
+
+  return response.json();
+}
+
+export async function resetPassword(token: string, password: string): Promise<{ message: string }> {
+  const response = await fetch(`${API_URL}/api/auth/reset-password`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({ token, password })
+  });
+
+  if (!response.ok) {
+    throw new Error("No se pudo actualizar la contraseña");
   }
 
   return response.json();
@@ -154,6 +227,20 @@ export function getStoredUser(): User | null {
 
   try {
     return JSON.parse(rawUser) as User;
+  } catch {
+    return null;
+  }
+}
+
+export function getStoredCompany(): Company | null {
+  if (typeof window === "undefined") return null;
+
+  const rawCompany = localStorage.getItem("complienx_company");
+
+  if (!rawCompany) return null;
+
+  try {
+    return JSON.parse(rawCompany) as Company;
   } catch {
     return null;
   }
