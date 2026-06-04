@@ -1,4 +1,4 @@
-import type { RequestHandler } from "express";
+import type { Request, RequestHandler } from "express";
 import { HttpError } from "../../utils/http-error";
 import { decideApprovalSchema } from "./approvals.schemas";
 import {
@@ -8,9 +8,17 @@ import {
   submitDocumentForApproval
 } from "./approvals.service";
 
-export const getPendingApprovals: RequestHandler = async (_req, res, next) => {
+const getCompanyId = (req: Request) => {
+  if (!req.user?.companyId) {
+    throw new HttpError(403, "Company context is required");
+  }
+
+  return req.user.companyId;
+};
+
+export const getPendingApprovals: RequestHandler = async (req, res, next) => {
   try {
-    const approvals = await listPendingApprovals();
+    const approvals = await listPendingApprovals(getCompanyId(req));
     res.json({ approvals });
   } catch (error) {
     next(error);
@@ -23,7 +31,7 @@ export const postSubmitDocumentApproval: RequestHandler = async (req, res, next)
       throw new HttpError(401, "Unauthorized");
     }
 
-    const approval = await submitDocumentForApproval(req.params.documentId, req.user.id);
+    const approval = await submitDocumentForApproval(req.params.documentId, req.user.id, getCompanyId(req));
     res.status(201).json({ approval });
   } catch (error) {
     next(error);
@@ -33,7 +41,7 @@ export const postSubmitDocumentApproval: RequestHandler = async (req, res, next)
 export const postApproveApproval: RequestHandler = async (req, res, next) => {
   try {
     const input = decideApprovalSchema.parse(req.body);
-    const approval = await approveDocumentApproval(req.params.approvalId, input);
+    const approval = await approveDocumentApproval(req.params.approvalId, getCompanyId(req), input);
     res.json({ approval });
   } catch (error) {
     next(error);
@@ -43,7 +51,7 @@ export const postApproveApproval: RequestHandler = async (req, res, next) => {
 export const postRejectApproval: RequestHandler = async (req, res, next) => {
   try {
     const input = decideApprovalSchema.parse(req.body);
-    const approval = await rejectDocumentApproval(req.params.approvalId, input);
+    const approval = await rejectDocumentApproval(req.params.approvalId, getCompanyId(req), input);
     res.json({ approval });
   } catch (error) {
     next(error);
