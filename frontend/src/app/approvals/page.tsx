@@ -5,8 +5,15 @@ import { Check, RefreshCw } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 import { apiFetch, getStoredToken, type Approval } from "@/lib/api";
 
+const statusLabels: Record<string, string> = {
+  approved: "Aprobado",
+  rejected: "Rechazado",
+  pending: "Pendiente"
+};
+
 export default function ApprovalsPage() {
   const [approvals, setApprovals] = useState<Approval[]>([]);
+  const [history, setHistory] = useState<Approval[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [processingAction, setProcessingAction] = useState<"approve" | "reject" | null>(null);
@@ -26,10 +33,15 @@ export default function ApprovalsPage() {
     setError("");
 
     try {
-      const response = await apiFetch<{ approvals: Approval[] }>("/api/approvals/pending", token);
-      setApprovals(response.approvals);
+      const [pendingResponse, historyResponse] = await Promise.all([
+        apiFetch<{ approvals: Approval[] }>("/api/approvals/pending", token),
+        apiFetch<{ approvals: Approval[] }>("/api/approvals/history", token)
+      ]);
+
+      setApprovals(pendingResponse.approvals);
+      setHistory(historyResponse.approvals);
     } catch {
-      setError("No se pudieron cargar las aprobaciones pendientes.");
+      setError("No se pudieron cargar las aprobaciones.");
     } finally {
       setLoading(false);
     }
@@ -74,8 +86,8 @@ export default function ApprovalsPage() {
             <p className="mt-3 text-3xl font-semibold text-slate-950">{approvals.length}</p>
           </article>
           <article className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
-            <p className="text-sm text-slate-500">En revisión</p>
-            <p className="mt-3 text-3xl font-semibold text-slate-950">{approvals.length}</p>
+            <p className="text-sm text-slate-500">Histórico</p>
+            <p className="mt-3 text-3xl font-semibold text-slate-950">{history.length}</p>
           </article>
           <article className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
             <p className="text-sm text-slate-500">Flujo activo</p>
@@ -137,6 +149,45 @@ export default function ApprovalsPage() {
                   </article>
                 );
               })}
+            </div>
+          )}
+        </section>
+
+        <section className="rounded-2xl bg-white shadow-sm ring-1 ring-slate-200">
+          <div className="border-b border-slate-200 p-6">
+            <h3 className="text-base font-semibold text-slate-950">Historial de aprobaciones</h3>
+            <p className="mt-1 text-sm text-slate-500">Últimas aprobaciones y rechazos registrados.</p>
+          </div>
+
+          {loading ? (
+            <div className="p-6 text-sm text-slate-500">Cargando historial...</div>
+          ) : history.length === 0 ? (
+            <div className="p-12 text-center">
+              <h4 className="text-base font-semibold text-slate-950">Aún no hay historial</h4>
+              <p className="mt-2 text-sm text-slate-500">Las aprobaciones decididas aparecerán en esta sección.</p>
+            </div>
+          ) : (
+            <div className="divide-y divide-slate-100">
+              {history.map((approval) => (
+                <article className="p-6" key={approval.id}>
+                  <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+                    <div>
+                      <span className={approval.status === "approved" ? "rounded-full bg-emerald-50 px-3 py-1 text-xs font-medium text-emerald-700" : "rounded-full bg-red-50 px-3 py-1 text-xs font-medium text-red-700"}>
+                        {statusLabels[approval.status] ?? approval.status}
+                      </span>
+                      <h4 className="mt-3 text-lg font-semibold text-slate-950">{approval.document?.title ?? "Documento sin título"}</h4>
+                      <p className="mt-1 text-sm text-slate-500">Versión {approval.documentVersion?.versionNumber ?? "sin versión"} · {approval.documentVersion?.fileName ?? "sin archivo"}</p>
+                      <p className="mt-1 text-sm text-slate-500">Decisión por: {approval.approver?.name ?? "Sin responsable"}</p>
+                      <p className="mt-1 text-sm text-slate-500">Fecha: {approval.decidedAt ? new Date(approval.decidedAt).toLocaleString("es-MX") : "No disponible"}</p>
+                      {approval.comment ? <p className="mt-3 rounded-xl bg-slate-50 px-4 py-3 text-sm text-slate-600">{approval.comment}</p> : null}
+                    </div>
+
+                    <a className="inline-flex justify-center rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" href={`/documents/${approval.documentId}`}>
+                      Ver documento
+                    </a>
+                  </div>
+                </article>
+              ))}
             </div>
           )}
         </section>
