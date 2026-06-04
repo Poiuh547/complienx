@@ -224,18 +224,23 @@ model DocumentApproval {
 }
 
 model Action {
-  id          BigInt       @id @default(autoincrement())
-  companyId   BigInt       @map("company_id")
-  title       String       @db.VarChar(200)
-  description String?
-  type        ActionType
-  priority    Priority     @default(medium)
-  status      ActionStatus @default(open)
-  ownerId     BigInt?      @map("owner_id")
-  dueDate     DateTime?    @map("due_date") @db.Date
-  closedAt    DateTime?    @map("closed_at")
-  createdAt   DateTime     @default(now()) @map("created_at")
-  updatedAt   DateTime     @updatedAt @map("updated_at")
+  id                  BigInt       @id @default(autoincrement())
+  companyId           BigInt       @map("company_id")
+  title               String       @db.VarChar(200)
+  description         String?
+  rootCause           String?      @map("root_cause")
+  actionPlan          String?      @map("action_plan")
+  closureResult       String?      @map("closure_result")
+  closureEvidence     String?      @map("closure_evidence")
+  verificationComment String?      @map("verification_comment")
+  type                ActionType
+  priority            Priority     @default(medium)
+  status              ActionStatus @default(open)
+  ownerId             BigInt?      @map("owner_id")
+  dueDate             DateTime?    @map("due_date") @db.Date
+  closedAt            DateTime?    @map("closed_at")
+  createdAt           DateTime     @default(now()) @map("created_at")
+  updatedAt           DateTime     @updatedAt @map("updated_at")
 
   company  Company         @relation(fields: [companyId], references: [id], onDelete: Cascade)
   owner    User?           @relation("ActionOwner", fields: [ownerId], references: [id])
