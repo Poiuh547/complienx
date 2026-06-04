@@ -3,6 +3,7 @@ import { HttpError } from "../../utils/http-error";
 import { decideApprovalSchema } from "./approvals.schemas";
 import {
   approveDocumentApproval,
+  listApprovalHistory,
   listPendingApprovals,
   rejectDocumentApproval,
   submitDocumentForApproval
@@ -19,6 +20,15 @@ const getCompanyId = (req: Request) => {
 export const getPendingApprovals: RequestHandler = async (req, res, next) => {
   try {
     const approvals = await listPendingApprovals(getCompanyId(req));
+    res.json({ approvals });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getApprovalHistory: RequestHandler = async (req, res, next) => {
+  try {
+    const approvals = await listApprovalHistory(getCompanyId(req));
     res.json({ approvals });
   } catch (error) {
     next(error);
