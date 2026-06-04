@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, Save } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { apiFetch, getStoredToken, type DocumentCategory } from "@/lib/api";
+import { apiFetch, getStoredToken, type Document, type DocumentCategory } from "@/lib/api";
 
 export default function NewDocumentPage() {
   const [title, setTitle] = useState("");
@@ -59,7 +59,7 @@ export default function NewDocumentPage() {
     setSaving(true);
 
     try {
-      await apiFetch("/api/documents", token, {
+      const response = await apiFetch<{ document: Document }>("/api/documents", token, {
         method: "POST",
         body: JSON.stringify({
           title,
@@ -69,7 +69,7 @@ export default function NewDocumentPage() {
         })
       });
 
-      window.location.href = "/documents";
+      window.location.href = `/documents/${response.document.id}`;
     } catch {
       setError("No se pudo crear el documento.");
     } finally {
