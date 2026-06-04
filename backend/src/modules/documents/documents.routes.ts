@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../../middlewares/auth.middleware";
+import { requireAuth, requireCompany } from "../../middlewares/auth.middleware";
 import { uploadDocumentFile } from "../../middlewares/upload.middleware";
 import {
   getCategories,
@@ -16,7 +16,7 @@ import {
 
 export const documentsRouter = Router();
 
-documentsRouter.use(requireAuth);
+documentsRouter.use(requireAuth, requireCompany);
 
 documentsRouter.get("/categories", getCategories);
 documentsRouter.post("/categories", postCategory);
