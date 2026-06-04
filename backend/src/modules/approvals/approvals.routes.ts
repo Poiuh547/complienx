@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../../middlewares/auth.middleware";
 import {
+  getApprovalHistory,
   getPendingApprovals,
   postApproveApproval,
   postRejectApproval,
@@ -12,6 +13,7 @@ export const approvalsRouter = Router();
 approvalsRouter.use(requireAuth);
 
 approvalsRouter.get("/pending", getPendingApprovals);
+approvalsRouter.get("/history", getApprovalHistory);
 approvalsRouter.post("/documents/:documentId/submit", postSubmitDocumentApproval);
 approvalsRouter.post("/:approvalId/approve", postApproveApproval);
 approvalsRouter.post("/:approvalId/reject", postRejectApproval);
