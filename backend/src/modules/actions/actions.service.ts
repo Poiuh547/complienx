@@ -2,6 +2,12 @@ import { prisma } from "../../config/prisma";
 import { HttpError } from "../../utils/http-error";
 import type { CreateActionCommentInput, CreateActionInput, UpdateActionInput } from "./actions.schemas";
 
+const ownerSelect = {
+  id: true,
+  name: true,
+  email: true
+};
+
 const toPublicActionComment = (comment: any) => ({
   ...comment,
   id: comment.id.toString(),
@@ -19,6 +25,7 @@ const toPublicActionComment = (comment: any) => ({
 const toPublicAction = (action: any) => ({
   ...action,
   id: action.id.toString(),
+  companyId: action.companyId?.toString(),
   ownerId: action.ownerId?.toString() ?? null,
   owner: action.owner
     ? {
@@ -30,16 +37,13 @@ const toPublicAction = (action: any) => ({
   comments: action.comments ? action.comments.map(toPublicActionComment) : undefined
 });
 
-export const listActions = async () => {
+export const listActions = async (companyId: string) => {
   const actions = await prisma.action.findMany({
+    where: { companyId: BigInt(companyId) },
     orderBy: { createdAt: "desc" },
     include: {
       owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
+        select: ownerSelect
       }
     }
   });
@@ -47,26 +51,21 @@ export const listActions = async () => {
   return actions.map(toPublicAction);
 };
 
-export const getActionById = async (id: string) => {
-  const action = await prisma.action.findUnique({
-    where: { id: BigInt(id) },
+export const getActionById = async (id: string, companyId: string) => {
+  const action = await prisma.action.findFirst({
+    where: {
+      id: BigInt(id),
+      companyId: BigInt(companyId)
+    },
     include: {
       owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
+        select: ownerSelect
       },
       comments: {
         orderBy: { createdAt: "desc" },
         include: {
           user: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
+            select: ownerSelect
           }
         }
       }
@@ -80,9 +79,10 @@ export const getActionById = async (id: string) => {
   return toPublicAction(action);
 };
 
-export const createAction = async (input: CreateActionInput, ownerId: string) => {
+export const createAction = async (input: CreateActionInput, ownerId: string, companyId: string) => {
   const action = await prisma.action.create({
     data: {
+      companyId: BigInt(companyId),
       title: input.title,
       description: input.description,
       type: input.type,
@@ -92,11 +92,7 @@ export const createAction = async (input: CreateActionInput, ownerId: string) =>
     },
     include: {
       owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
+        select: ownerSelect
       }
     }
   });
@@ -104,8 +100,8 @@ export const createAction = async (input: CreateActionInput, ownerId: string) =>
   return toPublicAction(action);
 };
 
-export const updateAction = async (id: string, input: UpdateActionInput) => {
-  await getActionById(id);
+export const updateAction = async (id: string, companyId: string, input: UpdateActionInput) => {
+  await getActionById(id, companyId);
 
   const action = await prisma.action.update({
     where: { id: BigInt(id) },
@@ -125,11 +121,7 @@ export const updateAction = async (id: string, input: UpdateActionInput) => {
     },
     include: {
       owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
+        select: ownerSelect
       }
     }
   });
@@ -139,10 +131,11 @@ export const updateAction = async (id: string, input: UpdateActionInput) => {
 
 export const createActionComment = async (
   actionId: string,
+  companyId: string,
   userId: string,
   input: CreateActionCommentInput
 ) => {
-  await getActionById(actionId);
+  await getActionById(actionId, companyId);
 
   const comment = await prisma.actionComment.create({
     data: {
@@ -152,11 +145,7 @@ export const createActionComment = async (
     },
     include: {
       user: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
+        select: ownerSelect
       }
     }
   });
