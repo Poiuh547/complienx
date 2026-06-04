@@ -87,6 +87,27 @@ export const listPendingApprovals = async (companyId: string) => {
   return approvals.map(toPublicApproval);
 };
 
+export const listApprovalHistory = async (companyId: string) => {
+  const approvals = await prisma.documentApproval.findMany({
+    where: {
+      status: {
+        in: ["approved", "rejected"]
+      },
+      document: {
+        companyId: BigInt(companyId)
+      }
+    },
+    orderBy: [
+      { decidedAt: "desc" },
+      { createdAt: "desc" }
+    ],
+    include: approvalInclude,
+    take: 50
+  });
+
+  return approvals.map(toPublicApproval);
+};
+
 export const submitDocumentForApproval = async (documentId: string, approverId: string, companyId: string) => {
   const document = await prisma.document.findFirst({
     where: {
