@@ -23,6 +23,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
   const [savingVersion, setSavingVersion] = useState(false);
   const [submittingApproval, setSubmittingApproval] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [versionNumber, setVersionNumber] = useState("1.0");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [changeNotes, setChangeNotes] = useState("");
@@ -56,11 +57,13 @@ export default function DocumentDetailPage({ params }: PageProps) {
     if (!token) return;
 
     setError("");
+    setSuccess("");
     setSubmittingApproval(true);
 
     try {
       await apiFetch(`/api/approvals/documents/${id}/submit`, token, { method: "POST" });
       await fetchDocument();
+      setSuccess("Documento enviado a revisión correctamente.");
     } catch (error) {
       setError(error instanceof Error ? error.message : "No se pudo enviar a revisión.");
     } finally {
@@ -71,6 +74,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
   const handleUploadVersion = async (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     setError("");
+    setSuccess("");
 
     const token = getStoredToken();
     if (!token) {
@@ -104,12 +108,15 @@ export default function DocumentDetailPage({ params }: PageProps) {
       const fileInput = window.document.getElementById("documentFile") as HTMLInputElement | null;
       if (fileInput) fileInput.value = "";
       await fetchDocument();
+      setSuccess("Nueva versión subida correctamente.");
     } catch (error) {
       setError(error instanceof Error ? error.message : "No se pudo subir el archivo.");
     } finally {
       setSavingVersion(false);
     }
   };
+
+  const submitButtonLabel = document?.status === "in_review" ? "En revisión" : submittingApproval ? "Enviando..." : "Enviar a revisión";
 
   return (
     <AppShell activeItem="Documentos" description="Detalle, versiones y trazabilidad del documento." title="Detalle del documento">
@@ -127,7 +134,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
             </button>
             <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-semibold text-white hover:bg-emerald-700 disabled:cursor-not-allowed disabled:bg-emerald-300" disabled={!document?.currentVersionId || document?.status === "in_review" || submittingApproval} onClick={handleSubmitForApproval} type="button">
               <Send size={16} />
-              {submittingApproval ? "Enviando..." : "Enviar a revisión"}
+              {submitButtonLabel}
             </button>
             <a className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700" href={`/documents/${id}/edit`}>
               <Edit size={16} />
@@ -137,6 +144,7 @@ export default function DocumentDetailPage({ params }: PageProps) {
         </div>
 
         {error ? <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+        {success ? <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">{success}</p> : null}
 
         {loading ? (
           <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200"><p className="text-sm text-slate-500">Cargando documento...</p></section>
