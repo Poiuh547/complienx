@@ -2,42 +2,44 @@ import { prisma } from "../../config/prisma";
 import { HttpError } from "../../utils/http-error";
 import type { DecideApprovalInput } from "./approvals.schemas";
 
+const toPublicDocument = (document: any) => ({
+  ...document,
+  id: document.id.toString(),
+  companyId: document.companyId?.toString(),
+  categoryId: document.categoryId?.toString() ?? null,
+  ownerId: document.ownerId?.toString() ?? null,
+  currentVersionId: document.currentVersionId?.toString() ?? null,
+  category: document.category
+    ? {
+        ...document.category,
+        id: document.category.id.toString(),
+        companyId: document.category.companyId?.toString()
+      }
+    : null,
+  owner: document.owner
+    ? {
+        id: document.owner.id.toString(),
+        name: document.owner.name,
+        email: document.owner.email
+      }
+    : null
+});
+
+const toPublicVersion = (version: any) => ({
+  ...version,
+  id: version.id.toString(),
+  documentId: version.documentId.toString(),
+  uploadedBy: version.uploadedBy?.toString() ?? null
+});
+
 const toPublicApproval = (approval: any) => ({
   ...approval,
   id: approval.id.toString(),
   documentId: approval.documentId.toString(),
   documentVersionId: approval.documentVersionId.toString(),
   approverId: approval.approverId.toString(),
-  document: approval.document
-    ? {
-        ...approval.document,
-        id: approval.document.id.toString(),
-        categoryId: approval.document.categoryId?.toString() ?? null,
-        ownerId: approval.document.ownerId?.toString() ?? null,
-        currentVersionId: approval.document.currentVersionId?.toString() ?? null,
-        category: approval.document.category
-          ? {
-              ...approval.document.category,
-              id: approval.document.category.id.toString()
-            }
-          : null,
-        owner: approval.document.owner
-          ? {
-              id: approval.document.owner.id.toString(),
-              name: approval.document.owner.name,
-              email: approval.document.owner.email
-            }
-          : null
-      }
-    : null,
-  documentVersion: approval.documentVersion
-    ? {
-        ...approval.documentVersion,
-        id: approval.documentVersion.id.toString(),
-        documentId: approval.documentVersion.documentId.toString(),
-        uploadedBy: approval.documentVersion.uploadedBy?.toString() ?? null
-      }
-    : null,
+  document: approval.document ? toPublicDocument(approval.document) : null,
+  documentVersion: approval.documentVersion ? toPublicVersion(approval.documentVersion) : null,
   approver: approval.approver
     ? {
         id: approval.approver.id.toString(),
@@ -47,25 +49,11 @@ const toPublicApproval = (approval: any) => ({
     : null
 });
 
-export const listPendingApprovals = async () => {
-  const approvals = await prisma.documentApproval.findMany({
-    where: { status: "pending" },
-    orderBy: { createdAt: "desc" },
+const approvalInclude = {
+  document: {
     include: {
-      document: {
-        include: {
-          category: true,
-          owner: {
-            select: {
-              id: true,
-              name: true,
-              email: true
-            }
-          }
-        }
-      },
-      documentVersion: true,
-      approver: {
+      category: true,
+      owner: {
         select: {
           id: true,
           name: true,
@@ -73,14 +61,38 @@ export const listPendingApprovals = async () => {
         }
       }
     }
+  },
+  documentVersion: true,
+  approver: {
+    select: {
+      id: true,
+      name: true,
+      email: true
+    }
+  }
+};
+
+export const listPendingApprovals = async (companyId: string) => {
+  const approvals = await prisma.documentApproval.findMany({
+    where: {
+      status: "pending",
+      document: {
+        companyId: BigInt(companyId)
+      }
+    },
+    orderBy: { createdAt: "desc" },
+    include: approvalInclude
   });
 
   return approvals.map(toPublicApproval);
 };
 
-export const submitDocumentForApproval = async (documentId: string, approverId: string) => {
-  const document = await prisma.document.findUnique({
-    where: { id: BigInt(documentId) }
+export const submitDocumentForApproval = async (documentId: string, approverId: string, companyId: string) => {
+  const document = await prisma.document.findFirst({
+    where: {
+      id: BigInt(documentId),
+      companyId: BigInt(companyId)
+    }
   });
 
   if (!document) {
@@ -111,28 +123,7 @@ export const submitDocumentForApproval = async (documentId: string, approverId: 
         approverId: BigInt(approverId),
         status: "pending"
       },
-      include: {
-        document: {
-          include: {
-            category: true,
-            owner: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        },
-        documentVersion: true,
-        approver: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
+      include: approvalInclude
     });
 
     await tx.document.update({
@@ -146,21 +137,27 @@ export const submitDocumentForApproval = async (documentId: string, approverId: 
   return toPublicApproval(approval);
 };
 
-export const approveDocumentApproval = async (approvalId: string, input: DecideApprovalInput) => {
-  return decideApproval(approvalId, "approved", input);
+export const approveDocumentApproval = async (approvalId: string, companyId: string, input: DecideApprovalInput) => {
+  return decideApproval(approvalId, companyId, "approved", input);
 };
 
-export const rejectDocumentApproval = async (approvalId: string, input: DecideApprovalInput) => {
-  return decideApproval(approvalId, "rejected", input);
+export const rejectDocumentApproval = async (approvalId: string, companyId: string, input: DecideApprovalInput) => {
+  return decideApproval(approvalId, companyId, "rejected", input);
 };
 
 const decideApproval = async (
   approvalId: string,
+  companyId: string,
   status: "approved" | "rejected",
   input: DecideApprovalInput
 ) => {
-  const approval = await prisma.documentApproval.findUnique({
-    where: { id: BigInt(approvalId) }
+  const approval = await prisma.documentApproval.findFirst({
+    where: {
+      id: BigInt(approvalId),
+      document: {
+        companyId: BigInt(companyId)
+      }
+    }
   });
 
   if (!approval) {
@@ -179,28 +176,7 @@ const decideApproval = async (
         comment: input.comment,
         decidedAt: new Date()
       },
-      include: {
-        document: {
-          include: {
-            category: true,
-            owner: {
-              select: {
-                id: true,
-                name: true,
-                email: true
-              }
-            }
-          }
-        },
-        documentVersion: true,
-        approver: {
-          select: {
-            id: true,
-            name: true,
-            email: true
-          }
-        }
-      }
+      include: approvalInclude
     });
 
     await tx.document.update({
