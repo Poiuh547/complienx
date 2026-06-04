@@ -18,9 +18,17 @@ import {
   updateDocument
 } from "./documents.service";
 
-export const getDocuments: RequestHandler = async (_req, res, next) => {
+const getCompanyId = (req: Parameters<RequestHandler>[0]) => {
+  if (!req.user?.companyId) {
+    throw new HttpError(403, "Company context is required");
+  }
+
+  return req.user.companyId;
+};
+
+export const getDocuments: RequestHandler = async (req, res, next) => {
   try {
-    const documents = await listDocuments();
+    const documents = await listDocuments(getCompanyId(req));
     res.json({ documents });
   } catch (error) {
     next(error);
@@ -29,7 +37,7 @@ export const getDocuments: RequestHandler = async (_req, res, next) => {
 
 export const getDocument: RequestHandler = async (req, res, next) => {
   try {
-    const document = await getDocumentById(req.params.id);
+    const document = await getDocumentById(req.params.id, getCompanyId(req));
     res.json({ document });
   } catch (error) {
     next(error);
@@ -43,7 +51,7 @@ export const postDocument: RequestHandler = async (req, res, next) => {
     }
 
     const input = createDocumentSchema.parse(req.body);
-    const document = await createDocument(input, req.user.id);
+    const document = await createDocument(input, req.user.id, getCompanyId(req));
 
     res.status(201).json({ document });
   } catch (error) {
@@ -54,7 +62,7 @@ export const postDocument: RequestHandler = async (req, res, next) => {
 export const patchDocument: RequestHandler = async (req, res, next) => {
   try {
     const input = updateDocumentSchema.parse(req.body);
-    const document = await updateDocument(req.params.id, input);
+    const document = await updateDocument(req.params.id, getCompanyId(req), input);
 
     res.json({ document });
   } catch (error) {
@@ -64,7 +72,7 @@ export const patchDocument: RequestHandler = async (req, res, next) => {
 
 export const getDocumentVersions: RequestHandler = async (req, res, next) => {
   try {
-    const versions = await listDocumentVersions(req.params.id);
+    const versions = await listDocumentVersions(req.params.id, getCompanyId(req));
     res.json({ versions });
   } catch (error) {
     next(error);
@@ -78,7 +86,7 @@ export const postDocumentVersion: RequestHandler = async (req, res, next) => {
     }
 
     const input = createDocumentVersionSchema.parse(req.body);
-    const version = await createDocumentVersion(req.params.id, input, req.user.id);
+    const version = await createDocumentVersion(req.params.id, getCompanyId(req), input, req.user.id);
 
     res.status(201).json({ version });
   } catch (error) {
@@ -111,7 +119,7 @@ export const postDocumentVersionUpload: RequestHandler = async (req, res, next) 
       setAsCurrent: req.body.setAsCurrent === undefined ? true : req.body.setAsCurrent === "true"
     });
 
-    const version = await createDocumentVersion(req.params.id, input, req.user.id);
+    const version = await createDocumentVersion(req.params.id, getCompanyId(req), input, req.user.id);
 
     res.status(201).json({ version });
   } catch (error) {
@@ -121,16 +129,16 @@ export const postDocumentVersionUpload: RequestHandler = async (req, res, next) 
 
 export const patchCurrentDocumentVersion: RequestHandler = async (req, res, next) => {
   try {
-    const document = await setCurrentDocumentVersion(req.params.id, req.params.versionId);
+    const document = await setCurrentDocumentVersion(req.params.id, getCompanyId(req), req.params.versionId);
     res.json({ document });
   } catch (error) {
     next(error);
   }
 };
 
-export const getCategories: RequestHandler = async (_req, res, next) => {
+export const getCategories: RequestHandler = async (req, res, next) => {
   try {
-    const categories = await listCategories();
+    const categories = await listCategories(getCompanyId(req));
     res.json({ categories });
   } catch (error) {
     next(error);
@@ -140,7 +148,7 @@ export const getCategories: RequestHandler = async (_req, res, next) => {
 export const postCategory: RequestHandler = async (req, res, next) => {
   try {
     const input = createCategorySchema.parse(req.body);
-    const category = await createCategory(input);
+    const category = await createCategory(input, getCompanyId(req));
 
     res.status(201).json({ category });
   } catch (error) {
