@@ -14,18 +14,20 @@ const toPublicVersion = (version: any) => ({
   uploadedBy: version.uploadedBy?.toString() ?? null
 });
 
+const toPublicCategory = (category: any) => ({
+  ...category,
+  id: category.id.toString(),
+  companyId: category.companyId?.toString()
+});
+
 const toPublicDocument = (document: any) => ({
   ...document,
   id: document.id.toString(),
+  companyId: document.companyId?.toString(),
   categoryId: document.categoryId?.toString() ?? null,
   ownerId: document.ownerId?.toString() ?? null,
   currentVersionId: document.currentVersionId?.toString() ?? null,
-  category: document.category
-    ? {
-        ...document.category,
-        id: document.category.id.toString()
-      }
-    : null,
+  category: document.category ? toPublicCategory(document.category) : null,
   owner: document.owner
     ? {
         id: document.owner.id.toString(),
@@ -44,38 +46,36 @@ const parseOptionalBigInt = (value?: string | null) => {
   return BigInt(value);
 };
 
-export const listDocuments = async () => {
-  const documents = await prisma.document.findMany({
-    orderBy: { createdAt: "desc" },
-    include: {
-      category: true,
-      currentVersion: true,
-      owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
-      }
+const documentInclude = {
+  category: true,
+  currentVersion: true,
+  owner: {
+    select: {
+      id: true,
+      name: true,
+      email: true
     }
+  }
+};
+
+export const listDocuments = async (companyId: string) => {
+  const documents = await prisma.document.findMany({
+    where: { companyId: BigInt(companyId) },
+    orderBy: { createdAt: "desc" },
+    include: documentInclude
   });
 
   return documents.map(toPublicDocument);
 };
 
-export const getDocumentById = async (id: string) => {
-  const document = await prisma.document.findUnique({
-    where: { id: BigInt(id) },
+export const getDocumentById = async (id: string, companyId: string) => {
+  const document = await prisma.document.findFirst({
+    where: {
+      id: BigInt(id),
+      companyId: BigInt(companyId)
+    },
     include: {
-      category: true,
-      currentVersion: true,
-      owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
-      },
+      ...documentInclude,
       versions: {
         orderBy: { createdAt: "desc" }
       },
@@ -102,33 +102,24 @@ export const getDocumentById = async (id: string) => {
   };
 };
 
-export const createDocument = async (input: CreateDocumentInput, ownerId: string) => {
+export const createDocument = async (input: CreateDocumentInput, ownerId: string, companyId: string) => {
   const document = await prisma.document.create({
     data: {
+      companyId: BigInt(companyId),
       title: input.title,
       description: input.description,
       categoryId: parseOptionalBigInt(input.categoryId),
       ownerId: BigInt(ownerId),
       reviewDueDate: input.reviewDueDate ? new Date(input.reviewDueDate) : null
     },
-    include: {
-      category: true,
-      currentVersion: true,
-      owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
-      }
-    }
+    include: documentInclude
   });
 
   return toPublicDocument(document);
 };
 
-export const updateDocument = async (id: string, input: UpdateDocumentInput) => {
-  await getDocumentById(id);
+export const updateDocument = async (id: string, companyId: string, input: UpdateDocumentInput) => {
+  await getDocumentById(id, companyId);
 
   const document = await prisma.document.update({
     where: { id: BigInt(id) },
@@ -144,17 +135,7 @@ export const updateDocument = async (id: string, input: UpdateDocumentInput) => 
             ? new Date(input.reviewDueDate)
             : null
     },
-    include: {
-      category: true,
-      currentVersion: true,
-      owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
-      }
-    }
+    include: documentInclude
   });
 
   return toPublicDocument(document);
@@ -162,10 +143,11 @@ export const updateDocument = async (id: string, input: UpdateDocumentInput) => 
 
 export const createDocumentVersion = async (
   documentId: string,
+  companyId: string,
   input: CreateDocumentVersionInput,
   uploadedBy: string
 ) => {
-  await getDocumentById(documentId);
+  await getDocumentById(documentId, companyId);
 
   const result = await prisma.$transaction(async (tx) => {
     const version = await tx.documentVersion.create({
@@ -196,8 +178,8 @@ export const createDocumentVersion = async (
   return toPublicVersion(result);
 };
 
-export const listDocumentVersions = async (documentId: string) => {
-  await getDocumentById(documentId);
+export const listDocumentVersions = async (documentId: string, companyId: string) => {
+  await getDocumentById(documentId, companyId);
 
   const versions = await prisma.documentVersion.findMany({
     where: { documentId: BigInt(documentId) },
@@ -207,7 +189,9 @@ export const listDocumentVersions = async (documentId: string) => {
   return versions.map(toPublicVersion);
 };
 
-export const setCurrentDocumentVersion = async (documentId: string, versionId: string) => {
+export const setCurrentDocumentVersion = async (documentId: string, companyId: string, versionId: string) => {
+  await getDocumentById(documentId, companyId);
+
   const version = await prisma.documentVersion.findFirst({
     where: {
       id: BigInt(versionId),
@@ -222,43 +206,29 @@ export const setCurrentDocumentVersion = async (documentId: string, versionId: s
   const document = await prisma.document.update({
     where: { id: BigInt(documentId) },
     data: { currentVersionId: BigInt(versionId) },
-    include: {
-      category: true,
-      currentVersion: true,
-      owner: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
-      }
-    }
+    include: documentInclude
   });
 
   return toPublicDocument(document);
 };
 
-export const createCategory = async (input: CreateCategoryInput) => {
+export const createCategory = async (input: CreateCategoryInput, companyId: string) => {
   const category = await prisma.documentCategory.create({
     data: {
+      companyId: BigInt(companyId),
       name: input.name,
       description: input.description
     }
   });
 
-  return {
-    ...category,
-    id: category.id.toString()
-  };
+  return toPublicCategory(category);
 };
 
-export const listCategories = async () => {
+export const listCategories = async (companyId: string) => {
   const categories = await prisma.documentCategory.findMany({
+    where: { companyId: BigInt(companyId) },
     orderBy: { name: "asc" }
   });
 
-  return categories.map((category) => ({
-    ...category,
-    id: category.id.toString()
-  }));
+  return categories.map(toPublicCategory);
 };
