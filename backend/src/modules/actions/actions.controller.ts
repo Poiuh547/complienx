@@ -1,4 +1,4 @@
-import type { RequestHandler } from "express";
+import type { Request, RequestHandler } from "express";
 import { HttpError } from "../../utils/http-error";
 import {
   createActionCommentSchema,
@@ -13,9 +13,17 @@ import {
   updateAction
 } from "./actions.service";
 
-export const getActions: RequestHandler = async (_req, res, next) => {
+const getCompanyId = (req: Request) => {
+  if (!req.user?.companyId) {
+    throw new HttpError(403, "Company context is required");
+  }
+
+  return req.user.companyId;
+};
+
+export const getActions: RequestHandler = async (req, res, next) => {
   try {
-    const actions = await listActions();
+    const actions = await listActions(getCompanyId(req));
     res.json({ actions });
   } catch (error) {
     next(error);
@@ -24,7 +32,7 @@ export const getActions: RequestHandler = async (_req, res, next) => {
 
 export const getAction: RequestHandler = async (req, res, next) => {
   try {
-    const action = await getActionById(req.params.id);
+    const action = await getActionById(req.params.id, getCompanyId(req));
     res.json({ action });
   } catch (error) {
     next(error);
@@ -38,7 +46,7 @@ export const postAction: RequestHandler = async (req, res, next) => {
     }
 
     const input = createActionSchema.parse(req.body);
-    const action = await createAction(input, req.user.id);
+    const action = await createAction(input, req.user.id, getCompanyId(req));
 
     res.status(201).json({ action });
   } catch (error) {
@@ -49,7 +57,7 @@ export const postAction: RequestHandler = async (req, res, next) => {
 export const patchAction: RequestHandler = async (req, res, next) => {
   try {
     const input = updateActionSchema.parse(req.body);
-    const action = await updateAction(req.params.id, input);
+    const action = await updateAction(req.params.id, getCompanyId(req), input);
 
     res.json({ action });
   } catch (error) {
@@ -64,7 +72,7 @@ export const postActionComment: RequestHandler = async (req, res, next) => {
     }
 
     const input = createActionCommentSchema.parse(req.body);
-    const comment = await createActionComment(req.params.id, req.user.id, input);
+    const comment = await createActionComment(req.params.id, getCompanyId(req), req.user.id, input);
 
     res.status(201).json({ comment });
   } catch (error) {
