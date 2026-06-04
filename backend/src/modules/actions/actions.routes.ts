@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../../middlewares/auth.middleware";
+import { requireAuth, requireCompany } from "../../middlewares/auth.middleware";
 import {
   getAction,
   getActions,
@@ -10,7 +10,7 @@ import {
 
 export const actionsRouter = Router();
 
-actionsRouter.use(requireAuth);
+actionsRouter.use(requireAuth, requireCompany);
 
 actionsRouter.get("/", getActions);
 actionsRouter.post("/", postAction);
