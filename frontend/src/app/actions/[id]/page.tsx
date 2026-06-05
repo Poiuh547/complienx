@@ -36,10 +36,26 @@ export default function ActionDetailPage({ params }: PageProps) {
   const [action, setAction] = useState<ComplianceAction | null>(null);
   const [loading, setLoading] = useState(true);
   const [savingStatus, setSavingStatus] = useState(false);
+  const [savingAnalysis, setSavingAnalysis] = useState(false);
   const [savingComment, setSavingComment] = useState(false);
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState("");
   const [status, setStatus] = useState<ComplianceAction["status"]>("open");
   const [comment, setComment] = useState("");
+  const [rootCause, setRootCause] = useState("");
+  const [actionPlan, setActionPlan] = useState("");
+  const [closureResult, setClosureResult] = useState("");
+  const [closureEvidence, setClosureEvidence] = useState("");
+  const [verificationComment, setVerificationComment] = useState("");
+
+  const fillForm = (item: ComplianceAction) => {
+    setStatus(item.status);
+    setRootCause(item.rootCause ?? "");
+    setActionPlan(item.actionPlan ?? "");
+    setClosureResult(item.closureResult ?? "");
+    setClosureEvidence(item.closureEvidence ?? "");
+    setVerificationComment(item.verificationComment ?? "");
+  };
 
   const fetchAction = async () => {
     const token = getStoredToken();
@@ -55,7 +71,7 @@ export default function ActionDetailPage({ params }: PageProps) {
     try {
       const response = await apiFetch<{ action: ComplianceAction }>(`/api/actions/${params.id}`, token);
       setAction(response.action);
-      setStatus(response.action.status);
+      fillForm(response.action);
     } catch {
       setError("No se pudo cargar la acción.");
     } finally {
@@ -73,6 +89,7 @@ export default function ActionDetailPage({ params }: PageProps) {
 
     setSavingStatus(true);
     setError("");
+    setSuccess("");
 
     try {
       await apiFetch(`/api/actions/${params.id}`, token, {
@@ -80,10 +97,39 @@ export default function ActionDetailPage({ params }: PageProps) {
         body: JSON.stringify({ status })
       });
       await fetchAction();
+      setSuccess("Estado actualizado correctamente.");
     } catch {
       setError("No se pudo actualizar el estado.");
     } finally {
       setSavingStatus(false);
+    }
+  };
+
+  const handleSaveAnalysis = async () => {
+    const token = getStoredToken();
+    if (!token) return;
+
+    setSavingAnalysis(true);
+    setError("");
+    setSuccess("");
+
+    try {
+      await apiFetch(`/api/actions/${params.id}`, token, {
+        method: "PATCH",
+        body: JSON.stringify({
+          rootCause: rootCause || null,
+          actionPlan: actionPlan || null,
+          closureResult: closureResult || null,
+          closureEvidence: closureEvidence || null,
+          verificationComment: verificationComment || null
+        })
+      });
+      await fetchAction();
+      setSuccess("Información de análisis y cierre guardada correctamente.");
+    } catch {
+      setError("No se pudo guardar la información de la acción.");
+    } finally {
+      setSavingAnalysis(false);
     }
   };
 
@@ -100,6 +146,7 @@ export default function ActionDetailPage({ params }: PageProps) {
 
     setSavingComment(true);
     setError("");
+    setSuccess("");
 
     try {
       await apiFetch(`/api/actions/${params.id}/comments`, token, {
@@ -108,6 +155,7 @@ export default function ActionDetailPage({ params }: PageProps) {
       });
       setComment("");
       await fetchAction();
+      setSuccess("Comentario agregado correctamente.");
     } catch {
       setError("No se pudo agregar el comentario.");
     } finally {
@@ -116,7 +164,7 @@ export default function ActionDetailPage({ params }: PageProps) {
   };
 
   return (
-    <AppShell activeItem="Acciones" description="Seguimiento, comentarios y estado de la acción." title="Detalle de acción">
+    <AppShell activeItem="Acciones" description="Seguimiento, análisis, cierre y comentarios de la acción." title="Detalle de acción">
       <div className="space-y-6">
         <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
           <a className="inline-flex items-center gap-2 text-sm font-medium text-slate-600 hover:text-blue-600" href="/actions">
@@ -124,17 +172,14 @@ export default function ActionDetailPage({ params }: PageProps) {
             Volver a acciones
           </a>
 
-          <button
-            className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-            onClick={fetchAction}
-            type="button"
-          >
+          <button className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50" onClick={fetchAction} type="button">
             <RefreshCw size={16} />
             Actualizar
           </button>
         </div>
 
         {error ? <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p> : null}
+        {success ? <p className="rounded-xl bg-green-50 px-4 py-3 text-sm text-green-700">{success}</p> : null}
 
         {loading ? (
           <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
@@ -157,14 +202,8 @@ export default function ActionDetailPage({ params }: PageProps) {
                   <InfoCard label="Prioridad" value={priorityLabels[action.priority]} />
                   <InfoCard label="Estado actual" value={statusLabels[action.status]} />
                   <InfoCard label="Responsable" value={action.owner?.name ?? "Sin responsable"} />
-                  <InfoCard
-                    label="Fecha compromiso"
-                    value={action.dueDate ? new Date(action.dueDate).toLocaleDateString("es-MX") : "No definida"}
-                  />
-                  <InfoCard
-                    label="Cierre"
-                    value={action.closedAt ? new Date(action.closedAt).toLocaleDateString("es-MX") : "No cerrada"}
-                  />
+                  <InfoCard label="Fecha compromiso" value={action.dueDate ? new Date(action.dueDate).toLocaleDateString("es-MX") : "No definida"} />
+                  <InfoCard label="Cierre" value={action.closedAt ? new Date(action.closedAt).toLocaleDateString("es-MX") : "No cerrada"} />
                 </div>
               </article>
 
@@ -173,11 +212,7 @@ export default function ActionDetailPage({ params }: PageProps) {
                 <p className="mt-1 text-sm text-slate-500">Actualiza el avance de la acción.</p>
 
                 <div className="mt-6 space-y-4">
-                  <select
-                    className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                    onChange={(event) => setStatus(event.target.value as ComplianceAction["status"])}
-                    value={status}
-                  >
+                  <select className="w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" onChange={(event) => setStatus(event.target.value as ComplianceAction["status"])} value={status}>
                     <option value="open">Abierta</option>
                     <option value="in_progress">En proceso</option>
                     <option value="in_review">En revisión</option>
@@ -185,17 +220,34 @@ export default function ActionDetailPage({ params }: PageProps) {
                     <option value="cancelled">Cancelada</option>
                   </select>
 
-                  <button
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-                    disabled={savingStatus}
-                    onClick={handleUpdateStatus}
-                    type="button"
-                  >
+                  <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300" disabled={savingStatus} onClick={handleUpdateStatus} type="button">
                     <Save size={16} />
                     {savingStatus ? "Guardando..." : "Guardar estado"}
                   </button>
                 </div>
               </article>
+            </section>
+
+            <section className="rounded-2xl bg-white p-6 shadow-sm ring-1 ring-slate-200">
+              <h3 className="text-base font-semibold text-slate-950">Análisis, plan y cierre</h3>
+              <p className="mt-1 text-sm text-slate-500">Documenta la causa, el plan de acción y la evidencia de cierre.</p>
+
+              <div className="mt-6 grid gap-5 md:grid-cols-2">
+                <TextArea label="Causa raíz" value={rootCause} onChange={setRootCause} placeholder="Describe la causa raíz identificada" />
+                <TextArea label="Plan de acción" value={actionPlan} onChange={setActionPlan} placeholder="Describe las actividades para corregir, prevenir o mejorar" />
+                <TextArea label="Resultado de cierre" value={closureResult} onChange={setClosureResult} placeholder="Describe el resultado obtenido" />
+                <TextArea label="Evidencia de cierre" value={closureEvidence} onChange={setClosureEvidence} placeholder="Describe o referencia la evidencia del cierre" />
+                <div className="md:col-span-2">
+                  <TextArea label="Comentario de verificación" value={verificationComment} onChange={setVerificationComment} placeholder="Indica si la acción fue efectiva y cómo se verificó" />
+                </div>
+              </div>
+
+              <div className="mt-6 flex justify-end">
+                <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300" disabled={savingAnalysis} onClick={handleSaveAnalysis} type="button">
+                  <Save size={16} />
+                  {savingAnalysis ? "Guardando..." : "Guardar análisis"}
+                </button>
+              </div>
             </section>
 
             <section className="grid gap-6 xl:grid-cols-[1fr_420px]">
@@ -226,18 +278,9 @@ export default function ActionDetailPage({ params }: PageProps) {
                 <p className="mt-1 text-sm text-slate-500">Registra avances, evidencias o decisiones.</p>
 
                 <form className="mt-6 space-y-4" onSubmit={handleCreateComment}>
-                  <textarea
-                    className="min-h-32 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                    onChange={(event) => setComment(event.target.value)}
-                    placeholder="Describe el avance de la acción"
-                    value={comment}
-                  />
+                  <textarea className="min-h-32 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" onChange={(event) => setComment(event.target.value)} placeholder="Describe el avance de la acción" value={comment} />
 
-                  <button
-                    className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300"
-                    disabled={savingComment}
-                    type="submit"
-                  >
+                  <button className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:bg-blue-300" disabled={savingComment} type="submit">
                     <Save size={16} />
                     {savingComment ? "Guardando..." : "Agregar comentario"}
                   </button>
@@ -256,6 +299,15 @@ function InfoCard({ label, value }: { label: string; value: string }) {
     <div className="rounded-xl bg-slate-50 p-4">
       <p className="text-xs uppercase tracking-wide text-slate-500">{label}</p>
       <p className="mt-2 text-sm font-medium text-slate-900">{value}</p>
+    </div>
+  );
+}
+
+function TextArea({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder: string }) {
+  return (
+    <div>
+      <label className="text-sm font-medium text-slate-700">{label}</label>
+      <textarea className="mt-2 min-h-28 w-full rounded-xl border border-slate-300 px-4 py-3 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100" onChange={(event) => onChange(event.target.value)} placeholder={placeholder} value={value} />
     </div>
   );
 }
