@@ -83,6 +83,11 @@ export type ComplianceAction = {
   companyId?: string;
   title: string;
   description?: string | null;
+  rootCause?: string | null;
+  actionPlan?: string | null;
+  closureResult?: string | null;
+  closureEvidence?: string | null;
+  verificationComment?: string | null;
   type: "corrective" | "preventive" | "improvement";
   priority: "low" | "medium" | "high" | "critical";
   status: "open" | "in_progress" | "in_review" | "closed" | "cancelled";
