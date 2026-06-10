@@ -1,17 +1,20 @@
-import { Activity, AlertTriangle, CheckCircle2, Clock3, FileCheck2, TrendingUp } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
 
-const summaryCards = [
+const metrics = [
   {
     title: "Cumplimiento documental",
     value: "86%",
-    helper: "+4% contra el mes anterior",
-    icon: FileCheck2,
-    tone: "blue"
+    note: "+4% contra el mes anterior",
   },
   {
     title: "Acciones abiertas",
     value: "24",
-    helper: "8 con prioridad alta",
-    icon: Activity,
-    tone: "amber
+    note: "8 con prioridad alta",
+  },
+  {
+    title: "Acciones vencidas",
+    value: "7",
+    note: "Requieren seguimiento inmediato",
+  },
+  {
+    title: "Tiempo
