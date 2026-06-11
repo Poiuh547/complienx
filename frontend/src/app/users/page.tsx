@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, RefreshCw, Save } from "lucide-react";
 import { AppShell } from "@/components/app-shell";
-import { apiFetch, getStoredToken, type User } from "@/lib/api";
+import { apiFetch, getStoredToken, getStoredUser, type User } from "@/lib/api";
 
 const roleLabels: Record<string, string> = {
   admin: "Administrador",
@@ -26,6 +26,7 @@ export default function UsersPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [role, setRole] = useState("collaborator");
+  const currentUser = getStoredUser();
 
   const fetchUsers = async () => {
     const token = getStoredToken();
@@ -175,7 +176,7 @@ export default function UsersPage() {
                         <td className="px-6 py-4">
                           <select
                             className="rounded-xl border border-slate-300 px-3 py-2 text-sm outline-none focus:border-blue-500 focus:ring-4 focus:ring-blue-100"
-                            disabled={updatingId === user.id}
+                            disabled={updatingId === user.id || currentUser?.id === user.id}
                             onChange={(event) => handleUpdateUser(user.id, { role: event.target.value })}
                             value={user.role}
                           >
@@ -183,6 +184,9 @@ export default function UsersPage() {
                             <option value="collaborator">Colaborador</option>
                             <option value="auditor">Auditor / consulta</option>
                           </select>
+                          {currentUser?.id === user.id ? (
+                            <p className="mt-1 text-xs text-slate-400">No puedes cambiar tu propio rol</p>
+                          ) : null}
                         </td>
                         <td className="px-6 py-4">
                           <select

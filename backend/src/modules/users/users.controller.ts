@@ -38,7 +38,16 @@ export const postUser: RequestHandler = async (req, res, next) => {
 
 export const patchUser: RequestHandler = async (req, res, next) => {
   try {
+    if (!req.user) {
+      throw new HttpError(401, "Unauthorized");
+    }
+
     const input = updateUserSchema.parse(req.body);
+
+    if (req.user.id === req.params.id && input.role) {
+      throw new HttpError(403, "No puedes cambiar tu propio rol");
+    }
+
     const user = await updateUser(req.params.id, input);
     res.json({ user });
   } catch (error) {
